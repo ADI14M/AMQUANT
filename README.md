@@ -52,25 +52,34 @@ AMQUANT/
 ├── backend/                 # FastAPI Service & HTTP Contracts
 │   ├── app/
 │   │   ├── main.py          # FastAPI application, CORS, health & root endpoints
+│   │   ├── auth.py          # Supabase JWT verification (RS256/ES256 JWKS or HS256 secret)
+│   │   ├── db.py            # PostgREST RLS data gateway with in-memory test fallback
 │   │   └── routes/          # Pydantic v2 schemas and validation routers
 │   │       ├── intelligence.py   # AMQUANT Research Intelligence workflow
 │   │       ├── foundations.py    # Foundations API
 │   │       ├── bayesian.py       # Bayesian API
 │   │       ├── stochastic.py     # Stochastic simulation API
-│   │       └── options.py        # Options Lab API
-│   └── requirements.txt     # Python dependencies
+│   │       ├── options.py        # Options Lab API
+│   │       ├── auth_routes.py    # Profile management (/api/auth/me, /api/auth/profile)
+│   │       ├── scenarios.py      # Saved research scenarios (/api/scenarios)
+│   │       └── history.py        # Research run audit trail (/api/research-history)
+│   └── requirements.txt     # Python dependencies (FastAPI, NumPy, SciPy, pandas, PyJWT[crypto])
 │
 ├── frontend/                # React 18 + TypeScript + Vite Dark Terminal Interface
 │   ├── src/
-│   │   ├── components/      # Shell, Sidebar, Dashboard, Controls, Charts
-│   │   ├── modules/         # Research Intelligence + 4 quantitative workspaces
-│   │   ├── lib/             # API client & health polling
+│   │   ├── components/      # Shell, Sidebar, Dashboard, Controls, Charts, AuthModal, SaveModal
+│   │   ├── modules/         # Research Intelligence + 4 quantitative workspaces + Personal Workspace
+│   │   ├── context/         # AuthContext (Supabase auth, session restoration, profiles)
+│   │   ├── lib/             # API client, Supabase client, health polling
 │   │   └── styles.css       # Dark Financial Terminal design system
-│   ├── package.json         # NPM manifest
+│   ├── package.json         # NPM manifest (@supabase/supabase-js, Lucide, Recharts)
 │   └── vite.config.ts       # Vite + Vitest configuration
 │
+├── supabase/                # PostgreSQL Schema & Row Level Security (RLS) Migrations
+│   └── migrations/          # 20261111000000_auth_and_workspaces.sql (profiles, scenarios, history)
+│
 └── tests/                   # Independent Mathematical & Contract Test Suites
-    ├── python/              # Pytest: financial benchmarks, Greeks, API contracts
+    ├── python/              # Pytest: financial benchmarks, Greeks, API contracts, Auth & RLS
     └── frontend/            # Vitest + React Testing Library UI tests
 ```
 
@@ -112,6 +121,14 @@ AMQUANT/
   - $\rho$ (Rho): sensitivity per $1.00$ ($100\%$) change in risk-free interest rate.
 - CRR European vs. American lattice comparison.
 - One-factor spot ($70\% - 130\%$) and volatility ($40\% - 160\%$) parametric sensitivity sweeps.
+
+### 6. Personal Research Workspace & Supabase Auth (`NEW`)
+- **Optional Registration & Login**: Guests have 100% unrestricted public access to all five research modules without logging in.
+- **Cryptographic JWT Verification**: Secure FastAPI bearer token validation checking asymmetric JWKS (`RS256`/`ES256`) or symmetric secret (`HS256`), verifying expiration, subject, issuer, and audience (`authenticated`).
+- **PostgreSQL Row-Level Security (RLS)**: Zero data leakage with `auth.uid() = user_id` database policies across `profiles`, `saved_scenarios`, and `research_history`.
+- **Saved Scenario Management**: Name, inspect, reopen into originating modules with preloaded state, rename, and delete scenarios.
+- **Research Execution History**: Automatic, audit-grade calculation tracking recorded in background when authenticated, with entry deletion and bulk clearing.
+- **Full Architecture Documentation**: See [`docs/auth_architecture.md`](docs/auth_architecture.md).
 
 ---
 
@@ -224,12 +241,17 @@ curl http://localhost:8000/api/health
 ### Environment Variables
 Configure `.env` or cloud service variables using `.env.example`:
 
-| Variable | Default | Purpose |
-| :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend backend API URL (`https://amquant-api.onrender.com` in prod) |
-| `CORS_ORIGINS` | `https://amquant.vercel.app,...` | Comma-separated allowed origins for FastAPI CORS |
-| `HOST` | `0.0.0.0` | Backend bind host |
-| `PORT` | `8000` | Backend bind port |
+| Variable | Scope | Default | Purpose |
+| :--- | :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | Frontend | `http://localhost:8000` | Frontend backend API URL (`https://amquant-api.onrender.com` in prod) |
+| `VITE_SUPABASE_URL` | Frontend | Optional | Supabase project URL (`https://xyz.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Optional | Supabase public anonymous API key |
+| `CORS_ORIGINS` | Backend | `https://amquant.vercel.app,...` | Comma-separated allowed origins for FastAPI CORS |
+| `SUPABASE_URL` | Backend | Optional | Supabase project URL for PostgREST proxy queries |
+| `SUPABASE_ANON_KEY` | Backend | Optional | Supabase public anonymous key for PostgREST calls |
+| `SUPABASE_JWT_SECRET` | Backend | Optional | Supabase JWT secret (or uses JWKS from Supabase URL) |
+| `HOST` | Backend | `0.0.0.0` | Backend bind host |
+| `PORT` | Backend | `8000` | Backend bind port |
 
 ### Resource Protection & Operational Guardrails
 

@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes } from 'react'
+import { Bookmark } from 'lucide-react'
 
 export function NumberField({ label, unit, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; unit?: string }) {
   return <label className="control-field"><span>{label}</span><div className="input-wrap"><input type="number" {...props}/>{unit && <small>{unit}</small>}</div></label>
@@ -14,6 +15,15 @@ export function ResultMetric({ label, value, note }: { label: string; value: str
 
 export function RunButton({ loading, children = 'Run calculation' }: { loading: boolean; children?: string }) {
   return <button className="primary-button run-button" type="submit" disabled={loading}>{loading ? 'Calculating…' : children}</button>
+}
+
+export function SaveScenarioButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="secondary-button save-trigger-btn" onClick={onClick} title="Save this scenario to your personal workspace">
+      <Bookmark size={13} />
+      <span>Save Scenario</span>
+    </button>
+  )
 }
 
 export function ErrorMessage({ message }: { message: string | null }) {

@@ -76,6 +76,9 @@ fly deploy
 - **Health Check Path**: `/api/health`
 - **Environment Variables**:
   - `CORS_ORIGINS`: `https://your-frontend.vercel.app`
+  - `SUPABASE_URL`: `https://your-project.supabase.co` (Optional, enables PostgREST RLS forwarding)
+  - `SUPABASE_ANON_KEY`: `your-anon-key` (Optional)
+  - `SUPABASE_JWT_SECRET`: `your-jwt-secret` (Optional, if verifying HS256 tokens locally)
 
 ### 2. Frontend Application (Vercel / Netlify / Cloudflare Pages)
 - **Root Directory**: `frontend`
@@ -84,6 +87,8 @@ fly deploy
 - **Output Directory**: `dist`
 - **Environment Variables**:
   - `VITE_API_BASE_URL`: `https://your-backend-service.onrender.com`
+  - `VITE_SUPABASE_URL`: `https://your-project.supabase.co` (Optional, enables Auth and Workspace)
+  - `VITE_SUPABASE_ANON_KEY`: `your-anon-key` (Optional)
 
 ---
 
@@ -92,7 +97,12 @@ fly deploy
 | Variable | Scope | Description | Production Example |
 | :--- | :--- | :--- | :--- |
 | `VITE_API_BASE_URL` | Frontend | URL of backend API | `https://amquant-api.onrender.com` |
+| `VITE_SUPABASE_URL` | Frontend | Supabase project URL | `https://xyzcompany.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Supabase public anonymous API key | `eyJhbGciOi...` |
 | `CORS_ORIGINS` | Backend | Comma-delimited list of allowed CORS browser origins (`https://amquant.vercel.app` included by default) | `https://amquant.vercel.app` |
+| `SUPABASE_URL` | Backend | Supabase project URL for PostgREST database requests | `https://xyzcompany.supabase.co` |
+| `SUPABASE_ANON_KEY` | Backend | Supabase public anonymous key for PostgREST calls | `eyJhbGciOi...` |
+| `SUPABASE_JWT_SECRET` | Backend | Supabase JWT secret for symmetric token verification | `secret-string` |
 | `HOST` | Backend | Server bind address | `0.0.0.0` |
 | `PORT` | Backend | Server bind port | `8000` |
 

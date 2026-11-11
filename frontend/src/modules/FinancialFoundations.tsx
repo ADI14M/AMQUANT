@@ -1,27 +1,68 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { postResearch } from './api'
-import { ErrorMessage, NumberField, ResultMetric, RunButton, SelectField } from '../components/ModuleControls'
+import { ErrorMessage, NumberField, ResultMetric, RunButton, SaveScenarioButton, SelectField } from '../components/ModuleControls'
+import SaveScenarioModal from '../components/SaveScenarioModal'
+import { useAuth } from '../context/AuthContext'
+import { recordResearchHistory } from '../lib/api'
 
 type Result = { tree: { price: number; delta: number; hedge_shares: number; hedge_cash: number; risk_neutral_probability: number; hedge_schedule?: { level: number; node: number; time: number; spot: number; option_value: number; delta: number; cash: number; exercise_now: boolean }[] }; payoff_curve: { spot: number; intrinsic: number; profit: number }[]; hedge_explanation: string }
-const initial = { spot: '100', strike: '100', premium: '10.45', maturity: '1', rate: '0.05', volatility: '0.2', steps: '30', kind: 'call', position: 'long', exercise: 'european' }
+const defaultInitial = { spot: '100', strike: '100', premium: '10.45', maturity: '1', rate: '0.05', volatility: '0.2', steps: '30', kind: 'call', position: 'long', exercise: 'european' }
 
-export default function FinancialFoundations() {
-  const [values, setValues] = useState(initial)
+export default function FinancialFoundations({ initialData }: { initialData?: Record<string, any> }) {
+  const { user, session, openAuthModal } = useAuth()
+  const [values, setValues] = useState(() => ({
+    ...defaultInitial,
+    ...(initialData ? Object.fromEntries(Object.entries(initialData).map(([k, v]) => [k, String(v)])) : {}),
+  }))
   const [result, setResult] = useState<Result | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const update = (key: keyof typeof initial, value: string) => setValues(current => ({ ...current, [key]: value }))
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+
+  const update = (key: keyof typeof defaultInitial, value: string) => setValues(current => ({ ...current, [key]: value }))
+
   async function submit(event: FormEvent) {
     event.preventDefault(); setLoading(true); setError(null)
-    try { setResult(await postResearch<Result>('/api/foundations/analyze', { ...values, spot: +values.spot, strike: +values.strike, premium: +values.premium, maturity: +values.maturity, rate: +values.rate, volatility: +values.volatility, steps: +values.steps })) }
+    try {
+      const res = await postResearch<Result>('/api/foundations/analyze', { ...values, spot: +values.spot, strike: +values.strike, premium: +values.premium, maturity: +values.maturity, rate: +values.rate, volatility: +values.volatility, steps: +values.steps })
+      setResult(res)
+
+      if (session?.access_token) {
+        void recordResearchHistory(session.access_token, 'foundations', {
+          binomial_price: res.tree.price,
+          hedge_delta: res.tree.hedge_shares,
+          spot: +values.spot,
+          strike: +values.strike,
+          kind: values.kind,
+        }).catch(() => {})
+      }
+    }
     catch (issue) { setError(issue instanceof Error ? issue.message : 'Calculation failed.') }
     finally { setLoading(false) }
   }
+
+  const handleSaveClick = () => {
+    if (!user) {
+      openAuthModal('login', 'Sign in to save this foundations scenario to your personal workspace.')
+    } else {
+      setSaveModalOpen(true)
+    }
+  }
+
   return <div className="research-workspace"><div className="module-hero"><div className="eyebrow">MODULE 01 · LEARNING PATH</div><h1>Financial Foundations</h1><p>Explore option payoff profiles, price a binomial tree, and inspect its node-by-node hedge policy.</p></div>
-    <div className="workspace-layout"><form className="panel input-panel" onSubmit={submit}><div className="panel-heading"><div><div className="eyebrow">MODEL INPUTS</div><h2>Option and tree</h2><p>CRR binomial model · up to 50 steps for hedge inspection</p></div></div><div className="controls-grid"><NumberField label="Spot price" unit="$" min="0.01" step="any" value={values.spot} onChange={e => update('spot', e.target.value)} required/><NumberField label="Strike" unit="$" min="0.01" step="any" value={values.strike} onChange={e => update('strike', e.target.value)} required/><NumberField label="Option premium" unit="$" min="0" step="any" value={values.premium} onChange={e => update('premium', e.target.value)} required/><NumberField label="Time to expiry" unit="years" min="0" max="20" step="any" value={values.maturity} onChange={e => update('maturity', e.target.value)} required/><NumberField label="Risk-free rate" unit="decimal" min="-1" max="1" step="any" value={values.rate} onChange={e => update('rate', e.target.value)} required/><NumberField label="Volatility" unit="decimal" min="0" max="5" step="any" value={values.volatility} onChange={e => update('volatility', e.target.value)} required/><NumberField label="Tree steps" min="1" max="50" step="1" value={values.steps} onChange={e => update('steps', e.target.value)} required/><SelectField label="Option type" value={values.kind} onChange={e => update('kind', e.target.value)}><option value="call">Call</option><option value="put">Put</option></SelectField><SelectField label="Position" value={values.position} onChange={e => update('position', e.target.value)}><option value="long">Long</option><option value="short">Short</option></SelectField><SelectField label="Exercise style" value={values.exercise} onChange={e => update('exercise', e.target.value)}><option value="european">European</option><option value="american">American</option></SelectField></div><RunButton loading={loading}/><ErrorMessage message={error}/></form>
+    <div className="workspace-layout"><form className="panel input-panel" onSubmit={submit}><div className="panel-heading"><div><div className="eyebrow">MODEL INPUTS</div><h2>Option and tree</h2><p>CRR binomial model · up to 50 steps for hedge inspection</p></div></div><div className="controls-grid"><NumberField label="Spot price" unit="$" min="0.01" step="any" value={values.spot} onChange={e => update('spot', e.target.value)} required/><NumberField label="Strike" unit="$" min="0.01" step="any" value={values.strike} onChange={e => update('strike', e.target.value)} required/><NumberField label="Option premium" unit="$" min="0" step="any" value={values.premium} onChange={e => update('premium', e.target.value)} required/><NumberField label="Time to expiry" unit="years" min="0" max="20" step="any" value={values.maturity} onChange={e => update('maturity', e.target.value)} required/><NumberField label="Risk-free rate" unit="decimal" min="-1" max="1" step="any" value={values.rate} onChange={e => update('rate', e.target.value)} required/><NumberField label="Volatility" unit="decimal" min="0" max="5" step="any" value={values.volatility} onChange={e => update('volatility', e.target.value)} required/><NumberField label="Tree steps" min="1" max="50" step="1" value={values.steps} onChange={e => update('steps', e.target.value)} required/><SelectField label="Option type" value={values.kind} onChange={e => update('kind', e.target.value)}><option value="call">Call</option><option value="put">Put</option></SelectField><SelectField label="Position" value={values.position} onChange={e => update('position', e.target.value)}><option value="long">Long</option><option value="short">Short</option></SelectField><SelectField label="Exercise style" value={values.exercise} onChange={e => update('exercise', e.target.value)}><option value="european">European</option><option value="american">American</option></SelectField></div><div className="form-action-row"><RunButton loading={loading}/><SaveScenarioButton onClick={handleSaveClick}/></div><ErrorMessage message={error}/></form>
       <section className="panel result-panel"><div className="panel-heading"><div><div className="eyebrow">RESULTS</div><h2>Payoff and replication</h2><p>At expiry, with premium included in profit</p></div><span className="synthetic-pill"><i/> MODEL OUTPUT</span></div>{result ? <><div className="result-grid four-results"><ResultMetric label="BINOMIAL VALUE" value={`$${result.tree.price.toFixed(4)}`} note={`${values.exercise} ${values.kind}`}/><ResultMetric label="DELTA HEDGE" value={`${result.tree.hedge_shares.toFixed(4)} shares`} note="shares per written option"/><ResultMetric label="HEDGE CASH" value={`$${result.tree.hedge_cash.toFixed(4)}`} note="negative means borrowing"/><ResultMetric label="RISK-NEUTRAL P" value={result.tree.risk_neutral_probability.toFixed(4)} note="per up move"/></div><ChartFrame title="Expiration payoff"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.payoff_curve}><CartesianGrid stroke="#202b34" strokeDasharray="3 3"/><XAxis dataKey="spot" tick={{ fill: '#7d8996', fontSize: 10 }} tickFormatter={v => `$${Number(v).toFixed(0)}`} tickLine={false}/><YAxis tick={{ fill: '#7d8996', fontSize: 10 }} tickFormatter={v => `$${Number(v).toFixed(0)}`} tickLine={false}/><Tooltip contentStyle={{ background: '#101721', border: '1px solid #263342', borderRadius: 8, fontSize: 11 }} labelFormatter={v => `Expiry spot $${Number(v).toFixed(2)}`} formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name === 'profit' ? 'Net profit' : 'Intrinsic value']}/><ReferenceLine y={0} stroke="#536170"/><ReferenceLine x={Number(values.spot)} stroke="#51c9a3" strokeDasharray="4 4"/><Line type="monotone" dataKey="profit" stroke="#36d0a0" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="intrinsic" stroke="#66798a" strokeDasharray="4 4" dot={false}/></LineChart></ResponsiveContainer></ChartFrame><HedgePolicy schedule={result.tree.hedge_schedule}/><p className="result-explanation">{result.hedge_explanation}</p></> : <EmptyResult text="Set the option terms and run the tree to see its value, payoff, and replicating hedge."/>}</section></div>
     <div className="model-note"><b>Model note</b> The CRR tree assumes constant volatility and continuously compounded rates. Select a time step to inspect each node hedge. Rebalancing is required as the underlying moves; American exercise can terminate the hedge early.</div>
+
+    <SaveScenarioModal
+      isOpen={saveModalOpen}
+      onClose={() => setSaveModalOpen(false)}
+      moduleName="foundations"
+      moduleTitle="Financial Foundations"
+      scenarioData={values}
+      defaultTitle={`Foundations ${values.exercise.toUpperCase()} ${values.kind.toUpperCase()} $${values.strike}`}
+    />
   </div>
 }
 

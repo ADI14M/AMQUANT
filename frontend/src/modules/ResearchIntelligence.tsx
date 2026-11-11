@@ -22,7 +22,10 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { postResearch } from './api'
-import { ErrorMessage, NumberField, ResultMetric, RunButton, SelectField } from '../components/ModuleControls'
+import { ErrorMessage, NumberField, ResultMetric, RunButton, SaveScenarioButton, SelectField } from '../components/ModuleControls'
+import SaveScenarioModal from '../components/SaveScenarioModal'
+import { useAuth } from '../context/AuthContext'
+import { recordResearchHistory } from '../lib/api'
 import { ChartFrame, EmptyResult } from './FinancialFoundations'
 
 export type IntelligenceResult = {
@@ -132,11 +135,16 @@ const pathColors = [
   '#ef8079', '#7bc7a9', '#9c87df', '#d7cc75', '#56a3bd', '#ed9d62'
 ]
 
-export default function ResearchIntelligence() {
-  const [inputs, setInputs] = useState(defaultInputs)
+export default function ResearchIntelligence({ initialData }: { initialData?: Record<string, any> }) {
+  const { user, session, openAuthModal } = useAuth()
+  const [inputs, setInputs] = useState(() => ({
+    ...defaultInputs,
+    ...(initialData ? Object.fromEntries(Object.entries(initialData).map(([k, v]) => [k, String(v)])) : {}),
+  }))
   const [result, setResult] = useState<IntelligenceResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [stochasticMeasure, setStochasticMeasure] = useState<'physical' | 'risk_neutral'>('physical')
   const [sensitivityAxis, setSensitivityAxis] = useState<'spot' | 'volatility'>('spot')
   const [activeStepTab, setActiveStepTab] = useState<'all' | 'bayesian' | 'stochastic' | 'valuation' | 'conclusion'>('all')
@@ -214,10 +222,28 @@ export default function ResearchIntelligence() {
 
       const response = await postResearch<IntelligenceResult>('/api/intelligence/analyze', payload)
       setResult(response)
+
+      if (session?.access_token) {
+        void recordResearchHistory(session.access_token, 'intelligence', {
+          asset: response.setup.asset,
+          bsm_price: response.valuation.black_scholes.price,
+          posterior_mean: response.bayesian.posterior.mean,
+          terminal_mean_p: response.stochastic.physical.terminal_mean,
+          terminal_mean_q: response.stochastic.risk_neutral.terminal_mean,
+        }).catch(() => {})
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Research workflow calculation failed.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveClick = () => {
+    if (!user) {
+      openAuthModal('login', 'Sign in to save this integrated research intelligence scenario.')
+    } else {
+      setSaveModalOpen(true)
     }
   }
 
@@ -316,7 +342,10 @@ export default function ResearchIntelligence() {
             <NumberField label="Binomial tree steps" min="10" max="200" step="1" value={inputs.tree_steps} onChange={e => update('tree_steps', e.target.value)} required/>
           </div>
 
-          <RunButton loading={loading}>Execute Research Workflow</RunButton>
+          <div className="form-action-row">
+            <RunButton loading={loading}>Execute Research Workflow</RunButton>
+            <SaveScenarioButton onClick={handleSaveClick}/>
+          </div>
           <ErrorMessage message={error}/>
         </form>
 
@@ -635,6 +664,15 @@ export default function ResearchIntelligence() {
         discrete Brownian/GBM paths, numerical CRR binomial lattices, and Black–Scholes–Merton continuous-time partial differential equations.
         All calculations execute natively in the pure Python quantitative engine.
       </div>
+
+      <SaveScenarioModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        moduleName="intelligence"
+        moduleTitle="Research Intelligence"
+        scenarioData={inputs}
+        defaultTitle={`${inputs.asset} Intelligence Synthesis (σ=${inputs.volatility}, μ=${inputs.drift})`}
+      />
     </div>
   )
 }
