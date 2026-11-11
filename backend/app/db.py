@@ -10,8 +10,21 @@ from backend.app.auth import AuthenticatedUser
 
 logger = logging.getLogger("amquant.db")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(".env.local")
+    load_dotenv(".env")
+    load_dotenv("frontend/.env.local")
+except ImportError:
+    pass
+
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "").rstrip("/")
+SUPABASE_ANON_KEY = (
+    os.getenv("SUPABASE_ANON_KEY")
+    or os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY")
+    or os.getenv("VITE_SUPABASE_ANON_KEY")
+    or ""
+)
 
 
 class SupabaseDbGateway:
@@ -21,9 +34,9 @@ class SupabaseDbGateway:
     evaluates auth.uid() natively and enforces Row Level Security policies.
     """
 
-    def __init__(self, supabase_url: str = SUPABASE_URL, anon_key: str = SUPABASE_ANON_KEY):
-        self.supabase_url = supabase_url
-        self.anon_key = anon_key
+    def __init__(self, supabase_url: str | None = None, anon_key: str | None = None):
+        self.supabase_url = (supabase_url if supabase_url is not None else SUPABASE_URL).rstrip("/")
+        self.anon_key = anon_key if anon_key is not None else SUPABASE_ANON_KEY
         # In-memory storage used for offline automated testing or unconfigured development
         self._test_mode = not (self.supabase_url and self.anon_key)
         self._memory_scenarios: dict[str, dict[str, Any]] = {}

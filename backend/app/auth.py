@@ -10,9 +10,22 @@ from fastapi import Depends, Header, HTTPException, status
 
 logger = logging.getLogger("amquant.auth")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(".env.local")
+    load_dotenv(".env")
+    load_dotenv("frontend/.env.local")
+except ImportError:
+    pass
+
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "").rstrip("/")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_ANON_KEY = (
+    os.getenv("SUPABASE_ANON_KEY")
+    or os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY")
+    or os.getenv("VITE_SUPABASE_ANON_KEY")
+    or ""
+)
 
 # Expected claims
 EXPECTED_AUDIENCE = "authenticated"
@@ -31,9 +44,10 @@ class AuthenticatedUser:
 class SupabaseTokenVerifier:
     """Verifies Supabase JWT access tokens using either JWKS (asymmetric) or shared secret (HS256)."""
 
-    def __init__(self, supabase_url: str = SUPABASE_URL, jwt_secret: str = SUPABASE_JWT_SECRET):
-        self.supabase_url = supabase_url
-        self.jwt_secret = jwt_secret
+    def __init__(self, supabase_url: str | None = None, jwt_secret: str | None = None):
+        self.supabase_url = (supabase_url if supabase_url is not None else SUPABASE_URL).rstrip("/")
+        self.jwt_secret = jwt_secret if jwt_secret is not None else SUPABASE_JWT_SECRET
+        self.expected_issuer = f"{self.supabase_url}/auth/v1" if self.supabase_url else None
         self._jwks_client: PyJWKClient | None = None
         if self.supabase_url:
             jwks_url = f"{self.supabase_url}/auth/v1/.well-known/jwks.json"
@@ -73,7 +87,7 @@ class SupabaseTokenVerifier:
                     signing_key.key,
                     algorithms=[alg],
                     audience=EXPECTED_AUDIENCE,
-                    issuer=EXPECTED_ISSUER if EXPECTED_ISSUER else None,
+                    issuer=self.expected_issuer if self.expected_issuer else None,
                     options=decode_options,
                 )
                 return claims
@@ -88,7 +102,7 @@ class SupabaseTokenVerifier:
                     self.jwt_secret,
                     algorithms=["HS256"],
                     audience=EXPECTED_AUDIENCE,
-                    issuer=EXPECTED_ISSUER if EXPECTED_ISSUER else None,
+                    issuer=self.expected_issuer if self.expected_issuer else None,
                     options=decode_options,
                 )
                 return claims

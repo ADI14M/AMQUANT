@@ -1,6 +1,15 @@
 """HTTP entry point. Calculation details live in quant_engine."""
 import logging
 import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(".env.local")
+    load_dotenv(".env")
+    load_dotenv("frontend/.env.local")
+except ImportError:
+    pass
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware

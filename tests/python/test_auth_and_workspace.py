@@ -18,6 +18,8 @@ TEST_SECRET = "super-secret-supabase-test-key-for-amquant-2026-signing"
 def setup_auth_environment(monkeypatch):
     """Configure JWT verifier with test secret and clear in-memory test DB."""
     monkeypatch.setattr(verifier, "jwt_secret", TEST_SECRET)
+    monkeypatch.setattr(verifier, "expected_issuer", "https://test-project.supabase.co/auth/v1")
+    monkeypatch.setattr(db, "_test_mode", True)
     db._memory_scenarios.clear()
     db._memory_history.clear()
     db._memory_profiles.clear()

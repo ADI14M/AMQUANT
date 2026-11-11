@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD ? 'https://amquant-api.onrender.com' : 'http://localhost:8000')
 
 export interface SavedScenario {
   id: string
