@@ -106,3 +106,4 @@ fly deploy
 - [x] Dockerfile executes with slim base image and curl health check.
 - [x] Automated benchmark test suite passes before release.
 - [x] Compliance and data transparency notices clearly rendered.
+
