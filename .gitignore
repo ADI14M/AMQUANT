@@ -1,0 +1,17 @@
+node_modules/
+frontend/dist/
+dist/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
