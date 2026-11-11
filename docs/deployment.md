@@ -91,19 +91,46 @@ fly deploy
 
 | Variable | Scope | Description | Production Example |
 | :--- | :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | Frontend | URL of backend API | `https://api.amquant.io` |
-| `CORS_ORIGINS` | Backend | Comma-delimited list of allowed CORS browser origins | `https://amquant.io,https://app.amquant.io` |
+| `VITE_API_BASE_URL` | Frontend | URL of backend API | `https://amquant-api.onrender.com` |
+| `CORS_ORIGINS` | Backend | Comma-delimited list of allowed CORS browser origins (`https://amquant.vercel.app` included by default) | `https://amquant.vercel.app` |
 | `HOST` | Backend | Server bind address | `0.0.0.0` |
 | `PORT` | Backend | Server bind port | `8000` |
 
 ---
 
+## Production Resource Hardening & Rate Limits
+
+To operate safely on memory-constrained single-instance free tiers (e.g. Render 512MB RAM) without paid services or databases, AMQUANT enforces strict server-side resource limits:
+
+| Resource Dimension | Enforced Upper Bound | HTTP Violation Response | Operational Rationale |
+| :--- | :--- | :--- | :--- |
+| **Monte Carlo Paths** | 10,000 paths max | `422 Unprocessable Entity` | Restricts NumPy array allocation to < 100 MB RAM |
+| **Simulation Time Steps** | 500 steps max | `422 Unprocessable Entity` | Keeps path generation times sub-second |
+| **CRR Tree Steps (Valuation)** | 500 steps max | `422 Unprocessable Entity` | Options Lab & Intelligence lattices |
+| **CRR Tree Steps (Hedge Schedule)** | 50 steps max | `422 Unprocessable Entity` | Foundations module returns $N(N+1)/2 = 1,275$ node records |
+| **Bayesian Observations** | 5,000 binary items max | `422 Unprocessable Entity` | Limits sequence traversal and JSON payload size |
+| **Numeric Bounds** | Spot/Strike $\le 10^7$, Volatility $\le 5.0$, Horizon $\le 20$ yr | `422 Unprocessable Entity` | Prevents floating-point overflow and negative root domains |
+| **Request Body Size** | 64 KB ($65,536$ bytes) max | `413 Content Too Large` | Rejects oversized or abusive POST payloads |
+| **IP Rate Limit** | 30 requests / minute / IP | `429 Too Many Requests` | Sliding window per-client throttling with `Retry-After` header |
+| **Concurrent Calculations** | 5 simultaneous tasks | `503 Service Unavailable` | Lightweight `asyncio.Semaphore` with 1.0s timeout to prevent OOM |
+
+### Free-Tier Hosting Characteristics & Operational Behavior
+- **Render Inactivity Spin-Down**: On Render's free tier, the backend web service spins down after 15 minutes of inactivity. When a user sends a request after an idle period, the container cold start requires 30–50 seconds. The frontend API client detects connection stalls and provides explicit cold-start guidance without breaking screens.
+- **Proxy-Aware Client IP Extraction**: Render routes requests through an internal reverse proxy (`10.x.x.x`). AMQUANT parses `X-Forwarded-For` right-to-left to extract the outermost verified client IP, ignoring forwarded headers when requests arrive directly from public networks to prevent header spoofing.
+- **Health Probe Exemption**: Endpoints `/api/health` and `/api/health/ready` are exempt from rate limiting to guarantee container readiness and health probes succeed continuously.
+- **Traceback Sanitization**: Unhandled exceptions return generic, safe HTTP 500 messages to clients with zero exposure of stack traces, filesystem directories, or internal modules, while retaining detailed server-side error logs for operations.
+
+---
+
 ## Security & Operational Checklist
 
-- [x] Zero API keys or secrets hardcoded in frontend source.
-- [x] CORS origin validation enabled with environment variable support.
-- [x] Input validation enforced via Pydantic schemas (bounds checking on $S_0, K, T, \sigma, r$).
+- [x] Zero API keys or secrets hardcoded in frontend source or committed to git.
+- [x] Secure CORS configuration: `https://amquant.vercel.app` supported, wildcard credentials disabled (`allow_credentials=False`).
+- [x] Strict input validation enforced via Pydantic models with explicit upper bounds on all numerical parameters.
+- [x] In-memory sliding window rate limiter (30 req/min) with periodic memory pruning.
+- [x] Concurrency semaphore (5 concurrent calculations) offloaded to threadpools via `run_in_threadpool`.
+- [x] Frontend resilience for cold starts, network errors, 429 rate limits, 503 capacity limits, and 422 validations.
 - [x] Dockerfile executes with slim base image and curl health check.
-- [x] Automated benchmark test suite passes before release.
+- [x] Automated benchmark test suite (Pytest + Vitest + build check) passes 100%.
 - [x] Compliance and data transparency notices clearly rendered.
 

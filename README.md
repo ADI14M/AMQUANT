@@ -226,10 +226,22 @@ Configure `.env` or cloud service variables using `.env.example`:
 
 | Variable | Default | Purpose |
 | :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend backend API URL |
-| `CORS_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed origins for FastAPI CORS |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend backend API URL (`https://amquant-api.onrender.com` in prod) |
+| `CORS_ORIGINS` | `https://amquant.vercel.app,...` | Comma-separated allowed origins for FastAPI CORS |
 | `HOST` | `0.0.0.0` | Backend bind host |
 | `PORT` | `8000` | Backend bind port |
+
+### Resource Protection & Operational Guardrails
+
+To run reliably on single-instance resource-constrained cloud tiers (e.g. Render 512 MB RAM) without external databases or paid services, AMQUANT implements strict server-side safeguards:
+
+- **Strict Input Validation**: Conservative upper bounds across all endpoints (Monte Carlo paths $\le 10,000$, simulation steps $\le 500$, tree steps $\le 500$, Bayesian observations $\le 5,000$).
+- **Request Body Size Limit**: HTTP 413 response for payloads exceeding 64 KB ($65,536$ bytes).
+- **Per-Client Rate Limiting**: In-memory sliding window rate limiter enforcing 30 requests/minute per client IP (HTTP 429 with `Retry-After` header), with Render reverse-proxy aware IP extraction and periodic record pruning.
+- **Concurrency Throttling**: Concurrency gate limiting simultaneous heavy calculations to 5 tasks via `asyncio.Semaphore` and `run_in_threadpool`, returning HTTP 503 when saturated to protect against OOM crashes.
+- **Safe Error Responses**: Unhandled exceptions log tracebacks server-side while returning sanitized HTTP 500 responses with zero client-side leakage of internal paths or stack traces.
+- **Frontend Cold-Start Handling**: Friendly UI feedback for Render free-tier cold starts (30–50s spin-up) and retry guidance without broken screens.
+- **Health & Readiness Checks**: Lightweight endpoints `/api/health` and `/api/health/ready` (exempt from rate limiting) for continuous uptime monitoring.
 
 ---
 

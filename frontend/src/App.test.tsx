@@ -96,4 +96,52 @@ describe('AMQUANT application shell', () => {
     expect(screen.getByText('Prior belief shifted upward to 63.6% based on observed signals.')).toBeInTheDocument()
     expect(screen.getByText('Put-Call Parity Verification')).toBeInTheDocument()
   })
+
+  it('handles rate limiting (429) gracefully and displays retry guidance', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: new Headers({ 'Retry-After': '42' }),
+      json: async () => ({ detail: 'Rate limit exceeded (maximum 30 requests per minute). Please retry in 42 seconds.' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    fireEvent.click(screen.getByRole('button', { name: /Financial Foundations/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run calculation' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/Rate limit exceeded/)).toBeInTheDocument()
+    expect(screen.getByText(/42 seconds/)).toBeInTheDocument()
+  })
+
+  it('handles cold starts and network connectivity errors with clear guidance', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    fireEvent.click(screen.getByRole('button', { name: /Financial Foundations/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run calculation' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/Cannot connect to the AMQUANT API/)).toBeInTheDocument()
+    expect(screen.getByText(/Render/)).toBeInTheDocument()
+  })
+
+  it('handles backend validation errors (422) without crashing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      headers: new Headers(),
+      json: async () => ({
+        detail: 'Request validation failed. Please check your parameter values.',
+        errors: [{ field: 'volatility', message: 'Input should be greater than 0' }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    fireEvent.click(screen.getByRole('button', { name: /Financial Foundations/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run calculation' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/Validation error: volatility: Input should be greater than 0/)).toBeInTheDocument()
+  })
 })
