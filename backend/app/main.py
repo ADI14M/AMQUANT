@@ -16,7 +16,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from backend.app.routes import auth_routes, bayesian, foundations, history, india, intelligence, options, scenarios, stochastic
+from backend.app.routes import (
+    access_routes,
+    admin_routes,
+    auth_routes,
+    bayesian,
+    foundations,
+    history,
+    india,
+    intelligence,
+    options,
+    scenarios,
+    stochastic,
+)
 from backend.app.security import SecurityMiddleware, execute_guarded_calculation
 from quant_engine.options import black_scholes
 
@@ -50,7 +62,7 @@ app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
@@ -96,6 +108,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+app.include_router(access_routes.router)
+app.include_router(admin_routes.router)
 app.include_router(foundations.router)
 app.include_router(bayesian.router)
 app.include_router(stochastic.router)
@@ -118,7 +132,7 @@ class OptionRequest(BaseModel):
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"service": "amquant-api", "status": "ok", "docs": "/docs", "health": "/api/health", "ready": "/api/health/ready"}
+    return {"service": "amquant-api", "status": "ok"}
 
 
 @app.get("/api/health")

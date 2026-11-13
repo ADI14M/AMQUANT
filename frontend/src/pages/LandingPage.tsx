@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Activity,
@@ -15,14 +16,20 @@ import {
   LineChart,
   Lock,
   Percent,
+  Shield,
   ShieldCheck,
   TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useAccess } from '../context/AccessContext'
+import AdminModal from '../components/AdminModal'
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const { user, openAuthModal } = useAuth()
+  const { lock } = useAccess()
+  const [adminOpen, setAdminOpen] = useState(false)
+  const isOwner = user?.email?.toLowerCase() === 'adi@amquant.in'
 
   return (
     <div className="landing-root min-h-screen bg-[#06090e] text-[#e2e8f0] font-sans antialiased selection:bg-[#10b981]/20 selection:text-[#10b981]">
@@ -81,6 +88,26 @@ export default function LandingPage() {
                 <span>Sign In</span>
               </button>
             )}
+
+            {isOwner && (
+              <button
+                onClick={() => setAdminOpen(true)}
+                className="px-2.5 py-1.5 rounded-md bg-[#0f233a] hover:bg-[#16375c] border border-[#1d446e] text-xs font-semibold text-[#38bdf8] transition-all flex items-center gap-1.5 shadow-sm"
+                title="Admin Desk (Owner Only)"
+              >
+                <Shield size={13} />
+                <span className="hidden sm:inline">Admin Desk</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => void lock()}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-md bg-[#131d2a] hover:bg-[#1c2a3d] border border-[#233549] text-xs font-semibold text-[#94a3b8] hover:text-[#f8fafc] transition-all flex items-center gap-1.5"
+              title="Lock Platform"
+            >
+              <Lock size={13} />
+              <span className="hidden sm:inline">Lock</span>
+            </button>
           </nav>
         </div>
       </header>
@@ -310,6 +337,8 @@ export default function LandingPage() {
           </p>
         </footer>
       </main>
+
+      <AdminModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </div>
   )
 }

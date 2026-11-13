@@ -1,3 +1,5 @@
+import { getAccessSessionToken } from '../lib/api'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 interface ApiValidationError {
@@ -13,9 +15,15 @@ interface ApiErrorPayload {
 export async function postResearch<T>(path: string, body: unknown): Promise<T> {
   let response: Response
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const token = typeof getAccessSessionToken === 'function' ? getAccessSessionToken() : null
+    if (token) {
+      headers['X-Amquant-Access-Token'] = token
+    }
     response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'include',
       body: JSON.stringify(body),
     })
   } catch (err) {

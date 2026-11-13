@@ -6,6 +6,7 @@ vi.mock('./lib/api', async () => {
   const actual = await vi.importActual<typeof import('./lib/api')>('./lib/api')
   return {
     ...actual,
+    checkAccessStatus: vi.fn().mockResolvedValue({ authenticated: true }),
     checkApiHealth: vi.fn().mockResolvedValue(true),
     listSavedScenarios: vi.fn().mockResolvedValue([
       {
@@ -63,12 +64,11 @@ describe('AMQUANT Auth & Personal Workspace Frontend', () => {
     // Switch to Register tab
     const registerTab = within(modal).getAllByRole('button', { name: /register/i })[0]
     fireEvent.click(registerTab)
-    expect(within(modal).getByRole('heading', { name: 'Create Research Account' })).toBeInTheDocument()
-    expect(within(modal).getByPlaceholderText('e.g. QuantResearcher')).toBeInTheDocument()
-    expect(within(modal).getByRole('button', { name: 'Create Research Account' })).toBeInTheDocument()
+    expect(within(modal).getByText(/Tester accounts are by invitation only/i)).toBeInTheDocument()
+    expect(within(modal).getByRole('button', { name: 'Back to Sign In' })).toBeInTheDocument()
 
     // Switch back to Sign In tab using footer button
-    const backToSignIn = within(modal).getByRole('button', { name: 'Sign in' })
+    const backToSignIn = within(modal).getByRole('button', { name: 'Back to Sign In' })
     fireEvent.click(backToSignIn)
     expect(within(modal).getByRole('heading', { name: 'Sign in to Terminal' })).toBeInTheDocument()
 

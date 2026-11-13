@@ -1,0 +1,4 @@
+# AMQUANT - Private Platform
+# Search Engine Crawlers Disallowed Globally
+User-agent: *
+Disallow: /

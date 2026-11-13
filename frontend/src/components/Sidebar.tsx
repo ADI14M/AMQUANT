@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Activity,
@@ -11,8 +12,12 @@ import {
   Globe2,
   Layers3,
   LineChart,
+  Lock,
+  Shield,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useAccess } from '../context/AccessContext'
+import AdminModal from './AdminModal'
 
 export type ModuleId =
   | 'overview'
@@ -42,6 +47,9 @@ export default function Sidebar({
 }) {
   const navigate = useNavigate()
   const { user, profile, openAuthModal } = useAuth()
+  const { lock } = useAccess()
+  const [adminOpen, setAdminOpen] = useState(false)
+  const isOwner = user?.email?.toLowerCase() === 'adi@amquant.in'
 
   const initials = user?.email
     ? user.email.slice(0, 2).toUpperCase()
@@ -138,7 +146,58 @@ export default function Sidebar({
             <span>{user ? user.email : 'Public Session'}</span>
           </div>
         </div>
+
+        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+          {isOwner && (
+            <button
+              onClick={() => setAdminOpen(true)}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                borderRadius: '6px',
+                background: '#0f233a',
+                border: '1px solid #1d446e',
+                color: '#38bdf8',
+                fontSize: '11px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+              }}
+              title="Admin Desk (Owner Only)"
+            >
+              <Shield size={12} />
+              <span>Admin</span>
+            </button>
+          )}
+          <button
+            onClick={() => void lock()}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              borderRadius: '6px',
+              background: '#111822',
+              border: '1px solid #1f2c3d',
+              color: '#94a3b8',
+              fontSize: '11px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+            }}
+            title="Lock Platform"
+          >
+            <Lock size={12} />
+            <span>Lock</span>
+          </button>
+        </div>
       </div>
+
+      <AdminModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </aside>
   )
 }

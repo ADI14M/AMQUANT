@@ -2,7 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
-vi.mock('./lib/api', () => ({ checkApiHealth: vi.fn().mockResolvedValue(false) }))
+vi.mock('./lib/api', async () => {
+  const actual = await vi.importActual<typeof import('./lib/api')>('./lib/api')
+  return {
+    ...actual,
+    checkAccessStatus: vi.fn().mockResolvedValue({ authenticated: true }),
+    checkApiHealth: vi.fn().mockResolvedValue(false),
+  }
+})
 
 describe('AMQUANT application shell', () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals() })

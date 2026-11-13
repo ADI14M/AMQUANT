@@ -30,10 +30,37 @@ export async function checkApiHealth(): Promise<boolean> {
   }
 }
 
+let inMemoryAccessSessionToken: string | null = null
+
+export function setAccessSessionToken(token: string | null) {
+  inMemoryAccessSessionToken = token
+}
+
+export function getAccessSessionToken(): string | null {
+  return inMemoryAccessSessionToken
+}
+
+export async function securedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers || {})
+  const token = getAccessSessionToken()
+  if (token && !headers.has('X-Amquant-Access-Token')) {
+    headers.set('X-Amquant-Access-Token', token)
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: 'include',
+  })
+}
+
 function authHeaders(token: string | null | undefined, extra: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...extra }
   if (token) {
     headers.Authorization = `Bearer ${token}`
+  }
+  const sessionToken = getAccessSessionToken()
+  if (sessionToken && !headers['X-Amquant-Access-Token']) {
+    headers['X-Amquant-Access-Token'] = sessionToken
   }
   return headers
 }
@@ -44,7 +71,7 @@ function authHeaders(token: string | null | undefined, extra: Record<string, str
 
 export async function listSavedScenarios(token: string, moduleName?: string): Promise<SavedScenario[]> {
   const query = moduleName ? `?module_name=${encodeURIComponent(moduleName)}` : ''
-  const res = await fetch(`${API_BASE}/api/scenarios${query}`, {
+  const res = await securedFetch(`${API_BASE}/api/scenarios${query}`, {
     headers: authHeaders(token),
   })
   if (!res.ok) {
@@ -55,7 +82,7 @@ export async function listSavedScenarios(token: string, moduleName?: string): Pr
 }
 
 export async function getSavedScenario(token: string, scenarioId: string): Promise<SavedScenario> {
-  const res = await fetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
+  const res = await securedFetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
     headers: authHeaders(token),
   })
   if (!res.ok) {
@@ -71,7 +98,7 @@ export async function createSavedScenario(
   moduleName: string,
   scenarioData: Record<string, any>
 ): Promise<SavedScenario> {
-  const res = await fetch(`${API_BASE}/api/scenarios`, {
+  const res = await securedFetch(`${API_BASE}/api/scenarios`, {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -97,7 +124,7 @@ export async function updateSavedScenario(
   if (title !== undefined) body.title = title.trim()
   if (scenarioData !== undefined) body.scenario_data = scenarioData
 
-  const res = await fetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
+  const res = await securedFetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
     method: 'PATCH',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
@@ -110,7 +137,7 @@ export async function updateSavedScenario(
 }
 
 export async function deleteSavedScenario(token: string, scenarioId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
+  const res = await securedFetch(`${API_BASE}/api/scenarios/${scenarioId}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   })
@@ -125,7 +152,7 @@ export async function deleteSavedScenario(token: string, scenarioId: string): Pr
 // ============================================================================
 
 export async function listResearchHistory(token: string, limit = 50, offset = 0): Promise<ResearchHistoryEntry[]> {
-  const res = await fetch(`${API_BASE}/api/research-history?limit=${limit}&offset=${offset}`, {
+  const res = await securedFetch(`${API_BASE}/api/research-history?limit=${limit}&offset=${offset}`, {
     headers: authHeaders(token),
   })
   if (!res.ok) {
@@ -141,7 +168,7 @@ export async function recordResearchHistory(
   summary: Record<string, any>,
   scenarioId?: string | null
 ): Promise<ResearchHistoryEntry> {
-  const res = await fetch(`${API_BASE}/api/research-history`, {
+  const res = await securedFetch(`${API_BASE}/api/research-history`, {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify({
@@ -158,7 +185,7 @@ export async function recordResearchHistory(
 }
 
 export async function deleteResearchHistoryEntry(token: string, historyId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/research-history/${historyId}`, {
+  const res = await securedFetch(`${API_BASE}/api/research-history/${historyId}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   })
@@ -169,7 +196,7 @@ export async function deleteResearchHistoryEntry(token: string, historyId: strin
 }
 
 export async function clearResearchHistory(token: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/research-history`, {
+  const res = await securedFetch(`${API_BASE}/api/research-history`, {
     method: 'DELETE',
     headers: authHeaders(token),
   })
@@ -255,25 +282,25 @@ export async function getIndiaInstruments(params?: {
   if (params?.market_cap_category) url.searchParams.set('market_cap_category', params.market_cap_category)
   if (params?.query) url.searchParams.set('query', params.query)
 
-  const res = await fetch(url.toString())
+  const res = await securedFetch(url.toString())
   if (!res.ok) throw new Error('Failed to fetch Indian instruments catalog')
   return res.json() as Promise<IndiaInstrument[]>
 }
 
 export async function getIndiaMarketOverview(): Promise<IndiaMarketOverview> {
-  const res = await fetch(`${API_BASE}/api/india/market-overview`)
+  const res = await securedFetch(`${API_BASE}/api/india/market-overview`)
   if (!res.ok) throw new Error('Failed to fetch Indian market overview')
   return res.json() as Promise<IndiaMarketOverview>
 }
 
 export async function getIndiaDataCoverage(): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/data-coverage`)
+  const res = await securedFetch(`${API_BASE}/api/india/data-coverage`)
   if (!res.ok) throw new Error('Failed to fetch data coverage audit')
   return res.json()
 }
 
 export async function getIndiaHistory(symbol: string, period = '1y'): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/history/${encodeURIComponent(symbol)}?period=${period}`)
+  const res = await securedFetch(`${API_BASE}/api/india/history/${encodeURIComponent(symbol)}?period=${period}`)
   if (!res.ok) throw new Error(`Failed to fetch history for ${symbol}`)
   return res.json()
 }
@@ -288,7 +315,7 @@ export async function runBayesianRegimeExperiment(payload: {
   regime_persistence?: number
   entry_threshold?: number
 }): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/experiment/bayesian-regime`, {
+  const res = await securedFetch(`${API_BASE}/api/india/experiment/bayesian-regime`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -307,7 +334,7 @@ export async function runIndiaBacktest(payload: {
   slow_period: number
   initial_capital: number
 }): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/backtest`, {
+  const res = await securedFetch(`${API_BASE}/api/india/backtest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -322,13 +349,13 @@ export async function runIndiaBacktest(payload: {
 // ── Phase 2: Historical Data Manager API ─────────────────────────
 
 export async function getIndiaUniverseStats(): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/universe-stats`)
+  const res = await securedFetch(`${API_BASE}/api/india/universe-stats`)
   if (!res.ok) throw new Error('Failed to fetch universe stats')
   return res.json()
 }
 
 export async function getHistoryManagerCoverage(): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/history-manager/coverage`)
+  const res = await securedFetch(`${API_BASE}/api/india/history-manager/coverage`)
   if (!res.ok) throw new Error('Failed to fetch history coverage')
   return res.json()
 }
@@ -341,7 +368,7 @@ export async function startHistoryDownload(payload: {
   period?: string
   incremental?: boolean
 }): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/history-manager/download`, {
+  const res = await securedFetch(`${API_BASE}/api/india/history-manager/download`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -354,13 +381,13 @@ export async function startHistoryDownload(payload: {
 }
 
 export async function getIndiaCorporateActions(symbol: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/corporate-actions/${encodeURIComponent(symbol)}`)
+  const res = await securedFetch(`${API_BASE}/api/india/corporate-actions/${encodeURIComponent(symbol)}`)
   if (!res.ok) throw new Error(`Failed to fetch corporate actions for ${symbol}`)
   return res.json()
 }
 
 export async function getIndiaSeriesComparison(symbol: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/series-comparison/${encodeURIComponent(symbol)}`)
+  const res = await securedFetch(`${API_BASE}/api/india/series-comparison/${encodeURIComponent(symbol)}`)
   if (!res.ok) throw new Error(`Failed to fetch series comparison for ${symbol}`)
   return res.json()
 }
@@ -404,13 +431,13 @@ export interface AdvancedBacktestRequest {
 }
 
 export async function getIndiaBacktestStrategies(): Promise<BacktestStrategyInfo[]> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/strategies`)
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/strategies`)
   if (!res.ok) throw new Error('Failed to fetch backtest strategies catalog')
   return res.json() as Promise<BacktestStrategyInfo[]>
 }
 
 export async function runAdvancedIndiaBacktest(payload: AdvancedBacktestRequest): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/run-advanced`, {
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/run-advanced`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -568,7 +595,7 @@ export async function getIndiaIntradayHistory(
   interval: string = '5m',
   limit: number = 375,
 ): Promise<IntradayHistoryResponse> {
-  const res = await fetch(`${API_BASE}/api/india/intraday/history?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`)
+  const res = await securedFetch(`${API_BASE}/api/india/intraday/history?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`)
   if (!res.ok) throw new Error('Failed to fetch intraday history')
   return res.json()
 }
@@ -580,7 +607,7 @@ export async function downloadIndiaIntraday(payload: {
   start_date?: string | null
   end_date?: string | null
 }): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/india/intraday/download`, {
+  const res = await securedFetch(`${API_BASE}/api/india/intraday/download`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -601,13 +628,13 @@ export async function getIndiaDerivativesContracts(
   if (underlying) params.append('underlying', underlying)
   if (contract_type) params.append('contract_type', contract_type)
   if (expiry) params.append('expiry', expiry)
-  const res = await fetch(`${API_BASE}/api/india/derivatives/contracts?${params.toString()}`)
+  const res = await securedFetch(`${API_BASE}/api/india/derivatives/contracts?${params.toString()}`)
   if (!res.ok) throw new Error('Failed to fetch derivatives contracts')
   return res.json()
 }
 
 export async function getIndiaDerivativesLotSizes(underlying: string = 'NIFTY 50'): Promise<LotSizesResponse> {
-  const res = await fetch(`${API_BASE}/api/india/derivatives/lot-sizes?underlying=${encodeURIComponent(underlying)}`)
+  const res = await securedFetch(`${API_BASE}/api/india/derivatives/lot-sizes?underlying=${encodeURIComponent(underlying)}`)
   if (!res.ok) throw new Error('Failed to fetch lot sizes')
   return res.json()
 }
@@ -616,7 +643,7 @@ export async function getIndiaContinuousFutures(
   underlying: string = 'NIFTY 50',
   method: string = 'BACK_ADJUSTED_DIFFERENCE',
 ): Promise<ContinuousFuturesResponse> {
-  const res = await fetch(`${API_BASE}/api/india/derivatives/futures/continuous?underlying=${encodeURIComponent(underlying)}&method=${method}`)
+  const res = await securedFetch(`${API_BASE}/api/india/derivatives/futures/continuous?underlying=${encodeURIComponent(underlying)}&method=${method}`)
   if (!res.ok) throw new Error('Failed to fetch continuous futures')
   return res.json()
 }
@@ -628,13 +655,13 @@ export async function getIndiaOptionChain(
   const params = new URLSearchParams()
   params.append('underlying', underlying)
   if (expiry) params.append('expiry', expiry)
-  const res = await fetch(`${API_BASE}/api/india/derivatives/options/chain?${params.toString()}`)
+  const res = await securedFetch(`${API_BASE}/api/india/derivatives/options/chain?${params.toString()}`)
   if (!res.ok) throw new Error('Failed to fetch option chain')
   return res.json()
 }
 
 export async function getIndiaProviders(): Promise<ProviderSpecification[]> {
-  const res = await fetch(`${API_BASE}/api/india/providers`)
+  const res = await securedFetch(`${API_BASE}/api/india/providers`)
   if (!res.ok) throw new Error('Failed to fetch providers catalog')
   return res.json()
 }
@@ -851,13 +878,13 @@ export interface OptionsBacktestResponse {
 }
 
 export async function getIntradayStrategiesCatalog(): Promise<IntradayStrategyMeta[]> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/intraday/strategies`)
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/intraday/strategies`)
   if (!res.ok) throw new Error('Failed to fetch intraday strategies catalog')
   return res.json()
 }
 
 export async function runIntradayBacktest(req: IntradayBacktestRequest): Promise<IntradayBacktestResponse> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/intraday`, {
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/intraday`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -870,7 +897,7 @@ export async function runIntradayBacktest(req: IntradayBacktestRequest): Promise
 }
 
 export async function runFuturesBacktest(req: FuturesBacktestRequest): Promise<FuturesBacktestResponse> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/futures`, {
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/futures`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -883,13 +910,13 @@ export async function runFuturesBacktest(req: FuturesBacktestRequest): Promise<F
 }
 
 export async function getOptionsStrategiesCatalog(): Promise<OptionsStrategyTemplate[]> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/options/strategies`)
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/options/strategies`)
   if (!res.ok) throw new Error('Failed to fetch options strategies catalog')
   return res.json()
 }
 
 export async function runOptionsBacktest(req: OptionsBacktestRequest): Promise<OptionsBacktestResponse> {
-  const res = await fetch(`${API_BASE}/api/india/backtest/options`, {
+  const res = await securedFetch(`${API_BASE}/api/india/backtest/options`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -899,6 +926,152 @@ export async function runOptionsBacktest(req: OptionsBacktestRequest): Promise<O
     throw new Error(err?.detail || 'Options backtest execution failed')
   }
   return res.json()
+}
+
+// ============================================================================
+// ACCESS & ADMIN API
+// ============================================================================
+
+export interface AccessVerifyResponse {
+  ok: boolean
+  session_token: string
+  expires_at: string
+  detail?: string
+}
+
+export interface AccessStatusResponse {
+  authenticated: boolean
+  expires_at?: number
+  role?: string
+}
+
+export interface SecurityEvent {
+  id: string
+  timestamp: string
+  event_type: string
+  client_ip: string
+  detail: string
+  metadata: Record<string, any>
+}
+
+export interface SecurityLogsResponse {
+  count: number
+  events: SecurityEvent[]
+}
+
+export interface AdminSystemStatusResponse {
+  owner_email: string
+  active_password_configured: boolean
+  password_hash_preview: string
+  rate_limiter_status: Record<string, any>
+  storage_directory: string
+  disk_usage: Record<string, any>
+}
+
+export async function verifyAccessPassword(password: string): Promise<AccessVerifyResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/access/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    const retryAfter = res.headers.get('Retry-After')
+    const message = err?.detail || 'Incorrect access password.'
+    const error: any = new Error(message)
+    error.status = res.status
+    error.retryAfter = retryAfter ? parseInt(retryAfter, 10) : undefined
+    throw error
+  }
+  const data = (await res.json()) as AccessVerifyResponse
+  setAccessSessionToken(data.session_token)
+  return data
+}
+
+export async function checkAccessStatus(): Promise<AccessStatusResponse> {
+  try {
+    const headers: Record<string, string> = {}
+    const token = getAccessSessionToken()
+    if (token) {
+      headers['X-Amquant-Access-Token'] = token
+    }
+    const res = await fetch(`${API_BASE}/api/auth/access/status`, {
+      headers,
+      credentials: 'include',
+    })
+    if (!res.ok) return { authenticated: false }
+    return (await res.json()) as AccessStatusResponse
+  } catch {
+    return { authenticated: false }
+  }
+}
+
+export async function revokeAccessSession(): Promise<void> {
+  try {
+    const headers: Record<string, string> = {}
+    const token = getAccessSessionToken()
+    if (token) {
+      headers['X-Amquant-Access-Token'] = token
+    }
+    await fetch(`${API_BASE}/api/auth/access/revoke`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+    })
+  } finally {
+    setAccessSessionToken(null)
+  }
+}
+
+export async function getSecurityLogs(userJwt: string, limit: number = 100): Promise<SecurityLogsResponse> {
+  const res = await securedFetch(`${API_BASE}/api/admin/security-logs?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${userJwt}` },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Failed to retrieve security logs')
+  }
+  return res.json() as Promise<SecurityLogsResponse>
+}
+
+export async function rotateAccessPassword(
+  userJwt: string,
+  newPassword: string,
+): Promise<{ ok: boolean; detail: string; hash_preview: string }> {
+  const res = await securedFetch(`${API_BASE}/api/admin/rotate-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${userJwt}` },
+    body: JSON.stringify({ new_password: newPassword }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Failed to rotate access password')
+  }
+  return res.json()
+}
+
+export async function revokeAllAccessSessions(userJwt: string): Promise<{ ok: boolean; detail: string }> {
+  const res = await securedFetch(`${API_BASE}/api/admin/revoke-all-sessions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${userJwt}` },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Failed to revoke sessions')
+  }
+  return res.json()
+}
+
+export async function getAdminSystemStatus(userJwt: string): Promise<AdminSystemStatusResponse> {
+  const res = await securedFetch(`${API_BASE}/api/admin/system-status`, {
+    headers: { Authorization: `Bearer ${userJwt}` },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Failed to retrieve system status')
+  }
+  return res.json() as Promise<AdminSystemStatusResponse>
 }
 
 

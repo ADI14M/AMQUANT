@@ -2,8 +2,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
-vi.mock('./lib/api', () => ({
-  checkApiHealth: vi.fn().mockResolvedValue(true),
+vi.mock('./lib/api', async () => {
+  const actual = await vi.importActual<typeof import('./lib/api')>('./lib/api')
+  return {
+    ...actual,
+    checkAccessStatus: vi.fn().mockResolvedValue({ authenticated: true }),
+    checkApiHealth: vi.fn().mockResolvedValue(true),
   getIndiaMarketOverview: vi.fn().mockResolvedValue({
     macro_snapshot: {
       rbi_repo_rate: 6.5,
@@ -39,7 +43,8 @@ vi.mock('./lib/api', () => ({
   getIndiaBacktestStrategies: vi.fn().mockResolvedValue([]),
   getIntradayStrategiesCatalog: vi.fn().mockResolvedValue([]),
   getOptionsStrategiesCatalog: vi.fn().mockResolvedValue([]),
-}))
+  }
+})
 
 describe('AMQUANT Root Routing & Landing Page', () => {
   afterEach(() => {

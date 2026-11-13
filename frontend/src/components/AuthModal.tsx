@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, Mail, User, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, Mail, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function AuthModal() {
@@ -189,107 +189,111 @@ export default function AuthModal() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          {authModalMode === 'register' && (
-            <label className="auth-field">
-              <span>Display name</span>
-              <div className="auth-input-wrap">
-                <User size={15} />
-                <input
-                  type="text"
-                  placeholder="e.g. QuantResearcher"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  maxLength={100}
-                />
-              </div>
-            </label>
-          )}
+        {authModalMode === 'register' ? (
+          <div className="auth-notice-box" style={{ padding: '24px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#0e1b2b', border: '1px solid #1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+              <Lock size={20} />
+            </div>
+            <div>
+              <b style={{ color: '#f8fafc', display: 'block', marginBottom: '4px', fontSize: '14px' }}>Invitation Only</b>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>
+                Tester accounts are by invitation only. Contact the platform administrator (Adi) to be provisioned.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleModeChange('login')}
+              className="primary-button"
+              style={{ marginTop: '8px', padding: '8px 16px', fontSize: '12px' }}
+            >
+              Back to Sign In
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="auth-form">
+            {authModalMode !== 'update_password' && (
+              <label className="auth-field">
+                <span>Email address</span>
+                <div className="auth-input-wrap">
+                  <Mail size={15} />
+                  <input
+                    type="email"
+                    placeholder="analyst@firm.com"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+              </label>
+            )}
 
-          {authModalMode !== 'update_password' && (
-            <label className="auth-field">
-              <span>Email address</span>
-              <div className="auth-input-wrap">
-                <Mail size={15} />
-                <input
-                  type="email"
-                  placeholder="analyst@firm.com"
-                  required
-                  autoFocus
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-              </div>
-            </label>
-          )}
-
-          {authModalMode !== 'forgot' && (
-            <label className="auth-field">
-              <div className="auth-field-header">
-                <span>{authModalMode === 'update_password' ? 'New password' : 'Password'}</span>
-                {authModalMode === 'login' && (
+            {authModalMode !== 'forgot' && (
+              <label className="auth-field">
+                <div className="auth-field-header">
+                  <span>{authModalMode === 'update_password' ? 'New password' : 'Password'}</span>
+                  {authModalMode === 'login' && (
+                    <button
+                      type="button"
+                      className="auth-link-subtle"
+                      onClick={() => handleModeChange('forgot')}
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="auth-input-wrap">
+                  <Lock size={15} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                  />
                   <button
                     type="button"
-                    className="auth-link-subtle"
-                    onClick={() => handleModeChange('forgot')}
+                    className="auth-show-pw"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    Forgot password?
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
-                )}
-              </div>
-              <div className="auth-input-wrap">
-                <Lock size={15} />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="auth-show-pw"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </label>
-          )}
-
-          {(authModalMode === 'register' || authModalMode === 'update_password') && (
-            <label className="auth-field">
-              <span>Confirm password</span>
-              <div className="auth-input-wrap">
-                <Lock size={15} />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                />
-              </div>
-            </label>
-          )}
-
-          <button className="auth-submit-btn primary-button" type="submit" disabled={loading}>
-            {loading ? (
-              'Authenticating…'
-            ) : authModalMode === 'login' ? (
-              'Sign In to Workspace'
-            ) : authModalMode === 'register' ? (
-              'Create Research Account'
-            ) : authModalMode === 'forgot' ? (
-              'Send Recovery Link'
-            ) : (
-              'Save New Password'
+                </div>
+              </label>
             )}
-          </button>
-        </form>
+
+            {authModalMode === 'update_password' && (
+              <label className="auth-field">
+                <span>Confirm password</span>
+                <div className="auth-input-wrap">
+                  <Lock size={15} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              </label>
+            )}
+
+            <button className="auth-submit-btn primary-button" type="submit" disabled={loading}>
+              {loading ? (
+                'Authenticating…'
+              ) : authModalMode === 'login' ? (
+                'Sign In to Workspace'
+              ) : authModalMode === 'forgot' ? (
+                'Send Recovery Link'
+              ) : (
+                'Save New Password'
+              )}
+            </button>
+          </form>
+        )}
 
         <footer className="auth-modal-footer">
           {authModalMode === 'login' && (
