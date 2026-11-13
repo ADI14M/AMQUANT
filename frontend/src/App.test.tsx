@@ -6,7 +6,10 @@ vi.mock('./lib/api', () => ({ checkApiHealth: vi.fn().mockResolvedValue(false) }
 
 describe('AMQUANT application shell', () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals() })
-  beforeEach(() => { render(<App />) })
+  beforeEach(() => {
+    window.history.pushState({}, '', '/global')
+    render(<App />)
+  })
   it('renders the research dashboard and labels its example data synthetic', () => {
     expect(screen.getByRole('heading', { name: /Good morning/ })).toBeInTheDocument()
     expect(screen.getByText(/Illustrative simulation · not market data/)).toBeInTheDocument()

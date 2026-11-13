@@ -28,3 +28,4 @@ services:
         sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
+

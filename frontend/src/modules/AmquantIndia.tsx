@@ -79,10 +79,48 @@ import {
   startHistoryDownload,
 } from '../lib/api'
 
-type SubTab = 'overview' | 'instruments' | 'coverage' | 'research' | 'regimes' | 'backtest' | 'manager'
+export type SubTab = 'overview' | 'instruments' | 'coverage' | 'research' | 'regimes' | 'backtest' | 'manager' | 'risk' | 'workspace' | 'settings'
 
-export default function AmquantIndia() {
+export interface AmquantIndiaProps {
+  activeSection?: string
+  onSelectSection?: (section: any) => void
+  hideSubtabBar?: boolean
+}
+
+export default function AmquantIndia({ activeSection, onSelectSection: _onSelectSection, hideSubtabBar = false }: AmquantIndiaProps = {}) {
   const [tab, setTab] = useState<SubTab>('overview')
+
+  // Sync activeSection from IndiaApp route
+  useEffect(() => {
+    if (!activeSection) return
+    if (activeSection === 'overview') setTab('overview')
+    else if (activeSection === 'instruments') setTab('instruments')
+    else if (activeSection === 'data') {
+      setTab('manager')
+      setManagerSection('DAILY')
+    }
+    else if (activeSection === 'backtest-daily') {
+      setTab('backtest')
+      setBacktestEngineCategory('DAILY')
+    }
+    else if (activeSection === 'backtest-intraday') {
+      setTab('backtest')
+      setBacktestEngineCategory('INTRADAY')
+    }
+    else if (activeSection === 'futures') {
+      setTab('backtest')
+      setBacktestEngineCategory('FUTURES')
+    }
+    else if (activeSection === 'options') {
+      setTab('backtest')
+      setBacktestEngineCategory('OPTIONS')
+    }
+    else if (activeSection === 'regimes') setTab('regimes')
+    else if (activeSection === 'risk') setTab('risk')
+    else if (activeSection === 'storage') setTab('coverage')
+    else if (activeSection === 'workspace') setTab('workspace')
+    else if (activeSection === 'settings') setTab('settings')
+  }, [activeSection])
 
   // Overview state
   const [overview, setOverview] = useState<IndiaMarketOverview | null>(null)
@@ -796,186 +834,188 @@ export default function AmquantIndia() {
       </div>
 
       {/* Sub Navigation Tabs */}
-      <div
-        className="subtab-bar"
-        style={{
-          display: 'flex',
-          gap: '6px',
-          marginBottom: '24px',
-          borderBottom: '1px solid #1e293b',
-          paddingBottom: '8px',
-          overflowX: 'auto',
-        }}
-      >
-        <button
-          className={`subtab-btn ${tab === 'overview' ? 'active' : ''}`}
-          data-testid="tab-overview"
-          onClick={() => setTab('overview')}
+      {!hideSubtabBar && (
+        <div
+          className="subtab-bar"
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'overview' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'overview' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'overview' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
+            gap: '6px',
+            marginBottom: '24px',
+            borderBottom: '1px solid #1e293b',
+            paddingBottom: '8px',
+            overflowX: 'auto',
           }}
         >
-          <Compass size={15} />
-          Market Overview
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'overview' ? 'active' : ''}`}
+            data-testid="tab-overview"
+            onClick={() => setTab('overview')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'overview' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'overview' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'overview' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <Compass size={15} />
+            Market Overview
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'instruments' ? 'active' : ''}`}
-          data-testid="tab-instruments"
-          onClick={() => setTab('instruments')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'instruments' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'instruments' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'instruments' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <Layers size={15} />
-          Instrument Universe ({instruments.length})
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'instruments' ? 'active' : ''}`}
+            data-testid="tab-instruments"
+            onClick={() => setTab('instruments')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'instruments' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'instruments' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'instruments' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <Layers size={15} />
+            Instrument Universe ({instruments.length})
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'research' ? 'active' : ''}`}
-          data-testid="tab-research"
-          onClick={() => {
-            setTab('research')
-            if (!historyData) void loadHistory(selectedSymbol)
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'research' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'research' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'research' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <LineChartIcon size={15} />
-          Stock & Sector Research
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'research' ? 'active' : ''}`}
+            data-testid="tab-research"
+            onClick={() => {
+              setTab('research')
+              if (!historyData) void loadHistory(selectedSymbol)
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'research' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'research' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'research' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <LineChartIcon size={15} />
+            Stock & Sector Research
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'regimes' ? 'active' : ''}`}
-          data-testid="tab-regimes"
-          onClick={() => {
-            setTab('regimes')
-            if (!experimentResult) void handleRunExperiment()
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'regimes' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'regimes' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'regimes' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <FlaskConical size={15} />
-          Bayesian Regimes (Experiment 1)
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'regimes' ? 'active' : ''}`}
+            data-testid="tab-regimes"
+            onClick={() => {
+              setTab('regimes')
+              if (!experimentResult) void handleRunExperiment()
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'regimes' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'regimes' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'regimes' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <FlaskConical size={15} />
+            Bayesian Regimes (Experiment 1)
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'backtest' ? 'active' : ''}`}
-          data-testid="tab-backtest"
-          onClick={() => {
-            setTab('backtest')
-            if (!backtestResult) void handleRunBacktest()
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'backtest' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'backtest' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'backtest' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <BarChart3 size={15} />
-          Backtesting & Costs
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'backtest' ? 'active' : ''}`}
+            data-testid="tab-backtest"
+            onClick={() => {
+              setTab('backtest')
+              if (!backtestResult) void handleRunBacktest()
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'backtest' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'backtest' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'backtest' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <BarChart3 size={15} />
+            Backtesting & Costs
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'manager' ? 'active' : ''}`}
-          data-testid="tab-manager"
-          onClick={() => {
-            setTab('manager')
-            void loadManagerCoverage()
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'manager' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'manager' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'manager' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <HardDrive size={15} />
-          Data Manager
-        </button>
+          <button
+            className={`subtab-btn ${tab === 'manager' ? 'active' : ''}`}
+            data-testid="tab-manager"
+            onClick={() => {
+              setTab('manager')
+              void loadManagerCoverage()
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'manager' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'manager' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'manager' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <HardDrive size={15} />
+            Data Manager
+          </button>
 
-        <button
-          className={`subtab-btn ${tab === 'coverage' ? 'active' : ''}`}
-          data-testid="tab-coverage"
-          onClick={() => {
-            setTab('coverage')
-            void loadCoverage()
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: tab === 'coverage' ? '#1e293b' : 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: tab === 'coverage' ? '#38bdf8' : '#94a3b8',
-            fontWeight: tab === 'coverage' ? 600 : 500,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          <Database size={15} />
-          Storage & Coverage
-        </button>
-      </div>
+          <button
+            className={`subtab-btn ${tab === 'coverage' ? 'active' : ''}`}
+            data-testid="tab-coverage"
+            onClick={() => {
+              setTab('coverage')
+              void loadCoverage()
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: tab === 'coverage' ? '#1e293b' : 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: tab === 'coverage' ? '#38bdf8' : '#94a3b8',
+              fontWeight: tab === 'coverage' ? 600 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            <Database size={15} />
+            Storage & Coverage
+          </button>
+        </div>
+      )}
 
       {errorMsg && (
         <div
@@ -1012,7 +1052,7 @@ export default function AmquantIndia() {
               marginBottom: '20px',
             }}
           >
-            {overview?.headline_quotes.map(q => {
+            {overview?.headline_quotes?.map(q => {
               const isUp = q.change >= 0
               return (
                 <div
@@ -5486,6 +5526,330 @@ export default function AmquantIndia() {
           </div>
         </div>
       )}
+        </div>
+      )}
+
+      {/* Tab: Risk Management */}
+      {tab === 'risk' && (
+        <div data-testid="tab-risk-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: '#0e1726', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <ShieldCheck size={20} style={{ color: '#10b981' }} />
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f8fafc' }}>
+                Indian Market Risk Management & SEBI Limits
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
+              Comprehensive risk constraints ensuring simulated strategies obey statutory exchange circuit breakers, peak margin frameworks, and market-wide position limits (MWPL).
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>Index Circuit Breakers</span>
+                <span style={{ fontSize: '10px', background: '#064e3b', color: '#6ee7b7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>SEBI ENFORCED</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '12px' }}>
+                Coordinated nationwide market halt triggers calculated off previous session close:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#f59e0b', fontWeight: 600 }}>10% Movement</span>
+                  <span style={{ color: '#cbd5e1' }}>45m halt (before 13:00 IST) / 15m (13:00-14:30)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#f97316', fontWeight: 600 }}>15% Movement</span>
+                  <span style={{ color: '#cbd5e1' }}>1h 45m halt (before 13:00 IST) / remainder of day</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#ef4444', fontWeight: 600 }}>20% Movement</span>
+                  <span style={{ color: '#cbd5e1' }}>Trading halted for remainder of the day</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>Margin & Leverage Caps</span>
+                <span style={{ fontSize: '10px', background: '#1e1b4b', color: '#a5b4fc', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>PEAK MARGIN 100%</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '12px' }}>
+                Strict regulatory capital and position restrictions applied in backtests:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>Peak Margin Rule</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 600 }}>100% Upfront Collection</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>MWPL F&O Ban Threshold</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 600 }}>95% Open Interest Cap</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>EOD Square-Off Buffer</span>
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>15:15 IST (Auto Square-Off)</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>Drawdown & VaR Controls</span>
+                <span style={{ fontSize: '10px', background: '#450a0a', color: '#fca5a5', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>KILL SWITCH</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '12px' }}>
+                Automated risk thresholds guarding capital preservation:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>Max Daily Loss Limit</span>
+                  <span style={{ color: '#ef4444', fontWeight: 600 }}>2.0% of Capital (₹20,000)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>Max Portfolio Drawdown</span>
+                  <span style={{ color: '#ef4444', fontWeight: 600 }}>10.0% Trailing Equity</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#1e293b', borderRadius: '4px' }}>
+                  <span style={{ color: '#94a3b8' }}>Parametric 1-Day VaR (99%)</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 600 }}>1.84% Historical Variance</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+            <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
+              Live Price Band & Circuit Status (Audited Instruments)
+            </h4>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1e293b', color: '#64748b' }}>
+                    <th style={{ padding: '8px' }}>Instrument</th>
+                    <th style={{ padding: '8px' }}>Exchange</th>
+                    <th style={{ padding: '8px' }}>LTP (INR)</th>
+                    <th style={{ padding: '8px' }}>Lower Circuit</th>
+                    <th style={{ padding: '8px' }}>Upper Circuit</th>
+                    <th style={{ padding: '8px' }}>Band Type</th>
+                    <th style={{ padding: '8px' }}>Circuit Status</th>
+                  </tr>
+                </thead>
+                <tbody style={{ color: '#cbd5e1' }}>
+                  {[
+                    { symbol: 'NIFTY 50', ex: 'NSE', ltp: 24180.8, lc: 21762.7, uc: 26598.9, band: '10% (Index)', status: 'NORMAL' },
+                    { symbol: 'BANKNIFTY', ex: 'NSE', ltp: 51788.5, lc: 46609.6, uc: 56967.4, band: '10% (Index)', status: 'NORMAL' },
+                    { symbol: 'RELIANCE', ex: 'NSE', ltp: 1268.4, lc: 1141.5, uc: 1395.2, band: '10% (F&O Band)', status: 'NORMAL' },
+                    { symbol: 'TCS', ex: 'NSE', ltp: 4120.5, lc: 3708.4, uc: 4532.5, band: '10% (F&O Band)', status: 'NORMAL' },
+                    { symbol: 'HDFCBANK', ex: 'NSE', ltp: 1742.1, lc: 1567.8, uc: 1916.3, band: '10% (F&O Band)', status: 'NORMAL' },
+                    { symbol: 'INFY', ex: 'NSE', ltp: 1845.0, lc: 1660.5, uc: 2029.5, band: '10% (F&O Band)', status: 'NORMAL' },
+                  ].map(row => (
+                    <tr key={row.symbol} style={{ borderBottom: '1px solid #1e293b' }}>
+                      <td style={{ padding: '8px', fontWeight: 600, color: '#f8fafc' }}>{row.symbol}</td>
+                      <td style={{ padding: '8px' }}>{row.ex}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>₹{row.ltp.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#ef4444' }}>₹{row.lc.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#10b981' }}>₹{row.uc.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                      <td style={{ padding: '8px' }}>{row.band}</td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{ background: '#064e3b', color: '#6ee7b7', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600 }}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Personal Workspace */}
+      {tab === 'workspace' && (
+        <div data-testid="tab-workspace-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: '#0e1726', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <Bookmark size={20} style={{ color: '#f59e0b' }} />
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f8fafc' }}>
+                    Personal Indian Markets Workspace
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>
+                  Cloud-synced scenario library powered by Supabase with row-level security isolation.
+                </p>
+              </div>
+              <div>
+                {user ? (
+                  <span style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={14} /> Signed in as {user.email}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => openAuthModal('login', 'Sign in to access your personal Indian workspace')}
+                    style={{ background: '#251508', border: '1px solid #4d2a10', color: '#fb923c', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Sign In to Sync
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>NIFTY 50 Trend SMA (20/50)</span>
+                <span style={{ fontSize: '10px', background: '#064e3b', color: '#6ee7b7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>SAVED SCENARIO</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '14px' }}>
+                Long-only daily equity momentum strategy with 0.1% STT delivery rate and 0.05% slippage.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>NET CAGR</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981' }}>+18.4%</div>
+                </div>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>SHARPE</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>1.42</div>
+                </div>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>MAX DD</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>-8.6%</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setTab('backtest')
+                  setBacktestEngineCategory('DAILY')
+                  setBacktestSymbol('NIFTY 50')
+                }}
+                style={{ width: '100%', padding: '8px', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#38bdf8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Load into Backtest Engine →
+              </button>
+            </div>
+
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>RELIANCE Intraday ORB (15m)</span>
+                <span style={{ fontSize: '10px', background: '#1e1b4b', color: '#a5b4fc', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>INTRADAY</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '14px' }}>
+                15-minute Opening Range Breakout with 15:15 IST automatic square-off and zero lookahead.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>WIN RATE</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981' }}>58.2%</div>
+                </div>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>PROFIT FACTOR</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>1.65</div>
+                </div>
+                <div style={{ background: '#1e293b', padding: '8px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>TOTAL TRADES</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>142</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setTab('backtest')
+                  setBacktestEngineCategory('INTRADAY')
+                  setIntradaySymbol('RELIANCE')
+                }}
+                style={{ width: '100%', padding: '8px', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#38bdf8', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Load into Intraday Engine →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Settings */}
+      {tab === 'settings' && (
+        <div data-testid="tab-settings-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: '#0e1726', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <Sliders size={20} style={{ color: '#38bdf8' }} />
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f8fafc' }}>
+                Indian Platform & Execution Parameters
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
+              Configure trading fees, execution assumptions, capital sizing, and data directory settings for all Indian backtesting modules.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
+                Statutory Transaction Taxes (Finance Act 2024)
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Equity Delivery STT</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>0.10% (Buy & Sell)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Equity Intraday STT</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>0.025% (Sell Only)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Futures STT</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>0.02% (Sell Only)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Options STT</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>0.10% of Premium (Sell Only)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>GST on Brokerage + Exchanges</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>18.0%</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#94a3b8' }}>SEBI Turnover Charges</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>₹10 per Crore</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', padding: '18px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
+                Execution & Storage Environment
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Execution Fill Rule</span>
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>Next-Open (Zero Lookahead)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Default Capital Allocation</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>₹1,000,000 (10 Lakhs)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Brokerage Model</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 600 }}>₹20 / order Flat Discount</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Slippage Assumption</span>
+                  <span style={{ color: '#f8fafc', fontWeight: 600 }}>0.05% per execution</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #1e293b' }}>
+                  <span style={{ color: '#94a3b8' }}>Analytical Storage</span>
+                  <span style={{ color: '#a855f7', fontWeight: 600 }}>DuckDB + Snappy Parquet</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#94a3b8' }}>Monthly Infrastructure Cost</span>
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>£0 / ₹0 Tier Active</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

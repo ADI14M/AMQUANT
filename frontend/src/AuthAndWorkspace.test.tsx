@@ -38,6 +38,7 @@ describe('AMQUANT Auth & Personal Workspace Frontend', () => {
   })
 
   beforeEach(() => {
+    window.history.pushState({}, '', '/global')
     render(<App />)
   })
 
