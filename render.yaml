@@ -1,0 +1,30 @@
+# ==============================================================================
+# AMQUANT Render Blueprint Specification
+# Deploys the FastAPI service with optional persistent disk volume for Parquet data
+# ==============================================================================
+services:
+  - type: web
+    name: amquant-api
+    runtime: python
+    region: oregon
+    plan: starter # Starter enables persistent disk; can run on free without disk
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    disk:
+      name: amquant-data
+      mountPath: /var/data/amquant
+      sizeGB: 10
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: AMQUANT_DATA_DIR
+        value: /var/data/amquant
+      - key: CORS_ORIGINS
+        value: https://amquant.vercel.app,http://localhost:5173,http://127.0.0.1:5173
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false

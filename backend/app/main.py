@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from backend.app.routes import auth_routes, bayesian, foundations, history, intelligence, options, scenarios, stochastic
+from backend.app.routes import auth_routes, bayesian, foundations, history, india, intelligence, options, scenarios, stochastic
 from backend.app.security import SecurityMiddleware, execute_guarded_calculation
 from quant_engine.options import black_scholes
 
@@ -104,6 +104,7 @@ app.include_router(intelligence.router)
 app.include_router(auth_routes.router)
 app.include_router(scenarios.router)
 app.include_router(history.router)
+app.include_router(india.router)
 
 
 class OptionRequest(BaseModel):

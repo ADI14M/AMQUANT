@@ -8,7 +8,7 @@ from backend.app.db import db
 
 router = APIRouter(prefix="/api/scenarios", tags=["Saved Scenarios"])
 
-VALID_MODULES = Literal["foundations", "bayesian", "stochastic", "options", "intelligence"]
+VALID_MODULES = Literal["foundations", "bayesian", "stochastic", "options", "intelligence", "india"]
 
 
 class ScenarioCreateRequest(BaseModel):

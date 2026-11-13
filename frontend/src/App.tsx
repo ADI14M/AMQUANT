@@ -11,9 +11,11 @@ import StochasticSimulator from './modules/StochasticSimulator'
 import OptionsLab from './modules/OptionsLab'
 import ResearchIntelligence from './modules/ResearchIntelligence'
 import PersonalWorkspace from './modules/PersonalWorkspace'
+import AmquantIndia from './modules/AmquantIndia'
 
 const moduleInfo: Record<Exclude<ModuleId, 'overview'>, { eyebrow: string; title: string; description: string }> = {
   intelligence: { eyebrow: 'CORE · WORKFLOW SYNTHESIS', title: 'Research Intelligence', description: 'Unified workflow connecting Bayesian inference, simulations, and valuation.' },
+  india: { eyebrow: 'INDIAN MARKETS · PHASE 1', title: 'AMQUANT INDIA', description: 'Quantitative research and market-data platform for the Indian financial markets.' },
   foundations: { eyebrow: 'MODULE 01 · LEARNING PATH', title: 'Financial Foundations', description: 'Explore option payoffs, binomial pricing, and hedging.' },
   bayesian: { eyebrow: 'MODULE 02 · INFERENCE', title: 'Bayesian Engine', description: 'Update probability distributions as new evidence arrives.' },
   stochastic: { eyebrow: 'MODULE 03 · SIMULATION', title: 'Stochastic Simulator', description: 'Explore random processes and uncertainty over time.' },
@@ -140,6 +142,7 @@ function AppContent() {
 function ModuleWorkspace({ id, preloadedData }: { id: Exclude<ModuleId, 'overview' | 'workspace'>; preloadedData?: Record<string, any> }) {
   switch (id) {
     case 'intelligence': return <ResearchIntelligence initialData={preloadedData}/>
+    case 'india': return <AmquantIndia />
     case 'foundations': return <FinancialFoundations initialData={preloadedData}/>
     case 'bayesian': return <BayesianEngine initialData={preloadedData}/>
     case 'stochastic': return <StochasticSimulator initialData={preloadedData}/>

@@ -1,11 +1,12 @@
-import { Activity, Atom, Bookmark, BookOpen, Brain, ChevronDown, FlaskConical, Layers3, LineChart, LogIn } from 'lucide-react'
+import { Activity, Atom, Bookmark, BookOpen, Brain, ChevronDown, Compass, FlaskConical, Layers3, LineChart, LogIn } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-export type ModuleId = 'overview' | 'intelligence' | 'foundations' | 'bayesian' | 'stochastic' | 'options' | 'workspace'
+export type ModuleId = 'overview' | 'intelligence' | 'foundations' | 'bayesian' | 'stochastic' | 'options' | 'india' | 'workspace'
 
 const modules: { id: ModuleId; label: string; icon: typeof LineChart; tag?: string }[] = [
   { id: 'overview', label: 'Overview', icon: Layers3 },
   { id: 'intelligence', label: 'Research Intelligence', icon: Brain, tag: 'CORE' },
+  { id: 'india', label: 'AMQUANT INDIA', icon: Compass, tag: 'PHASE 1' },
   { id: 'foundations', label: 'Financial Foundations', icon: BookOpen },
   { id: 'bayesian', label: 'Bayesian Engine', icon: Atom, tag: '01' },
   { id: 'stochastic', label: 'Stochastic Simulator', icon: Activity, tag: '02' },
