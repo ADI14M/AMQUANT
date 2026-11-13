@@ -28,6 +28,18 @@ async def verify_access(
     """Verify shared access password and issue a cryptographically signed session token."""
     client_ip = get_client_ip(request)
 
+    # 0. Fail closed if administrator has not configured a password hash
+    if not password_manager.is_configured:
+        security_logger.log(
+            "ACCESS_PASSWORD_UNCONFIGURED",
+            client_ip,
+            "Access attempt blocked: no shared password configured by administrator",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Platform access is currently locked. The administrator has not configured a platform access password.",
+        )
+
     # 1. Check rate-limit lockout
     locked, retry_after = access_rate_limiter.is_locked(client_ip)
     if locked:

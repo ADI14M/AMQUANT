@@ -30,14 +30,30 @@ except ImportError:
 
 OWNER_EMAIL = (os.getenv("AMQUANT_OWNER_EMAIL") or "adi@amquant.in").strip().lower()
 
-# Secret used to sign session access tokens
-AMQUANT_SESSION_SECRET = (
-    os.getenv("AMQUANT_SESSION_SECRET")
-    or os.getenv("SUPABASE_JWT_SECRET")
-    or secrets.token_hex(32)
+IS_PRODUCTION = (
+    os.getenv("RENDER", "").lower() == "true"
+    or os.getenv("ENVIRONMENT", "").lower() == "production"
+    or os.getenv("VERCEL", "") == "1"
 )
 
-# Shared access password configuration
+raw_session_secret = os.getenv("AMQUANT_SESSION_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
+
+if IS_PRODUCTION:
+    if not raw_session_secret or len(raw_session_secret.strip()) < 32:
+        raise RuntimeError(
+            "Production security requirement: AMQUANT_SESSION_SECRET must be configured with at least 32 characters."
+        )
+    AMQUANT_SESSION_SECRET = raw_session_secret.strip()
+else:
+    if raw_session_secret and len(raw_session_secret.strip()) >= 32:
+        AMQUANT_SESSION_SECRET = raw_session_secret.strip()
+    else:
+        AMQUANT_SESSION_SECRET = secrets.token_hex(32)
+
+SESSION_ISSUER = "amquant-platform"
+SESSION_AUDIENCE = "amquant-access"
+
+# Shared access password configuration (fail closed if not configured)
 ENV_PASSWORD_HASH = os.getenv("AMQUANT_SHARED_ACCESS_PASSWORD_HASH", "").strip()
 ENV_PLAINTEXT_PASSWORD = os.getenv("AMQUANT_SHARED_ACCESS_PASSWORD", "").strip()
 
@@ -99,13 +115,17 @@ class AccessPasswordManager:
             self._active_hash = self.hash_password(ENV_PLAINTEXT_PASSWORD)
             logger.info("Derived Argon2id hash from environment plaintext password.")
         else:
-            # Fallback default for development / local testing
-            default_dev_pw = "amquant2026"
-            self._active_hash = self.hash_password(default_dev_pw)
+            # Fail closed: never silently create a known default password
+            self._active_hash = ""
             logger.warning(
                 "No AMQUANT_SHARED_ACCESS_PASSWORD_HASH or AMQUANT_SHARED_ACCESS_PASSWORD configured. "
-                "Defaulting to development password 'amquant2026'. Set this in production!"
+                "Fail-closed: platform access locked until configured by administrator."
             )
+
+    @property
+    def is_configured(self) -> bool:
+        """True if an access password hash is actively loaded."""
+        return bool(self._active_hash and len(self._active_hash) > 10)
 
     @staticmethod
     def hash_password(plaintext: str) -> str:
@@ -116,7 +136,7 @@ class AccessPasswordManager:
 
     def verify_password(self, candidate: str) -> bool:
         """Verify candidate password using constant-time Argon2id PHC verification."""
-        if not candidate or not self._active_hash:
+        if not candidate or not self.is_configured:
             return False
         try:
             Argon2id.verify_phc_encoded(candidate.encode("utf-8"), self._active_hash)
@@ -244,6 +264,8 @@ class AccessSessionManager:
         payload = {
             "sub": "beta_access",
             "role": "platform_access",
+            "iss": SESSION_ISSUER,
+            "aud": SESSION_AUDIENCE,
             "jti": jti,
             "iat": now,
             "exp": exp,
@@ -261,7 +283,7 @@ class AccessSessionManager:
         }
 
     def verify_session(self, token: str) -> tuple[bool, dict[str, Any] | None]:
-        """Verify token signature, expiry, and revocation state. Returns (is_valid, claims)."""
+        """Verify token signature, expiry, issuer, audience, and revocation state. Returns (is_valid, claims)."""
         if not token:
             return False, None
         try:
@@ -269,7 +291,15 @@ class AccessSessionManager:
                 token,
                 self.secret,
                 algorithms=["HS256"],
-                options={"verify_exp": True, "verify_iat": True, "require": ["exp", "sub", "jti", "iat"]},
+                issuer=SESSION_ISSUER,
+                audience=SESSION_AUDIENCE,
+                options={
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_iss": True,
+                    "verify_aud": True,
+                    "require": ["exp", "sub", "jti", "iat", "iss", "aud"],
+                },
             )
 
             # Check revocation epoch (revoke all)

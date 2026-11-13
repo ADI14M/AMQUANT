@@ -23,16 +23,19 @@ client._skip_test_auth = True
 
 @pytest.fixture(autouse=True)
 def reset_security_state():
-    """Reset rate limiters and session revocation state between tests."""
+    """Reset rate limiters, session revocation state, and password hash between tests."""
     access_rate_limiter._failures.clear()
     access_rate_limiter._lockouts.clear()
     session_manager.revoked_jtis.clear()
     session_manager.revocation_epoch = 0.0
+    original_hash = password_manager._active_hash
+    password_manager._active_hash = password_manager.hash_password("amquant2026")
     yield
     access_rate_limiter._failures.clear()
     access_rate_limiter._lockouts.clear()
     session_manager.revoked_jtis.clear()
     session_manager.revocation_epoch = 0.0
+    password_manager._active_hash = original_hash
 
 
 def test_public_health_and_root_endpoints_accessible_without_token():
@@ -174,13 +177,15 @@ def test_owner_only_administration():
     secret = SUPABASE_JWT_SECRET or "test-jwt-secret-at-least-32-chars-long"
 
     from backend.app.auth import verifier
+    test_issuer = verifier.expected_issuer or "https://atvoawdnyhgrafnwssbd.supabase.co/auth/v1"
+    verifier.expected_issuer = test_issuer
     verifier.jwt_secret = secret
 
     tester_payload = {
         "sub": str(uuid.uuid4()),
         "email": "tester@example.com",
         "aud": "authenticated",
-        "iss": verifier.expected_issuer,
+        "iss": test_issuer,
         "exp": int(time.time()) + 3600,
         "iat": int(time.time()),
     }
@@ -190,7 +195,7 @@ def test_owner_only_administration():
         "sub": str(uuid.uuid4()),
         "email": OWNER_EMAIL,
         "aud": "authenticated",
-        "iss": verifier.expected_issuer,
+        "iss": test_issuer,
         "exp": int(time.time()) + 3600,
         "iat": int(time.time()),
     }
@@ -218,6 +223,40 @@ def test_owner_only_administration():
     assert client.post("/api/auth/access/verify", json={"password": "amquant2026"}).status_code == 401
     # New password works
     assert client.post("/api/auth/access/verify", json={"password": "new_secure_amquant_pass_2026"}).status_code == 200
+
+
+def test_unconfigured_password_fails_closed():
+    """When no access password hash is configured, /verify must fail closed with 503."""
+    password_manager._active_hash = ""
+    res = client.post("/api/auth/access/verify", json={"password": "amquant2026"})
+    assert res.status_code == 503
+    assert "Platform access is currently locked" in res.json()["detail"]
+
+
+def test_session_token_issuer_and_audience():
+    """Tokens must include valid iss/aud claims; forged claims must be rejected."""
+    # Obtain valid session token
+    res = client.post("/api/auth/access/verify", json={"password": "amquant2026"})
+    valid_token = res.json()["session_token"]
+    decoded = jwt.decode(valid_token, AMQUANT_SESSION_SECRET, algorithms=["HS256"], audience="amquant-access")
+    assert decoded["iss"] == "amquant-platform"
+    assert decoded["aud"] == "amquant-access"
+
+    # Forged issuer token
+    forged_iss_payload = dict(decoded)
+    forged_iss_payload["iss"] = "forged-issuer"
+    forged_iss_payload["jti"] = str(uuid.uuid4())
+    forged_iss_token = jwt.encode(forged_iss_payload, AMQUANT_SESSION_SECRET, algorithm="HS256")
+    res_iss = client.get("/api/india/market-overview", headers={"X-Amquant-Access-Token": forged_iss_token})
+    assert res_iss.status_code == 401
+
+    # Forged audience token
+    forged_aud_payload = dict(decoded)
+    forged_aud_payload["aud"] = "forged-aud"
+    forged_aud_payload["jti"] = str(uuid.uuid4())
+    forged_aud_token = jwt.encode(forged_aud_payload, AMQUANT_SESSION_SECRET, algorithm="HS256")
+    res_aud = client.get("/api/india/market-overview", headers={"X-Amquant-Access-Token": forged_aud_token})
+    assert res_aud.status_code == 401
 
 
 def test_security_headers_injected_on_all_responses():

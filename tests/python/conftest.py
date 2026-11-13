@@ -3,8 +3,12 @@ import functools
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.access_security import access_rate_limiter, session_manager
+from backend.app.access_security import access_rate_limiter, password_manager, session_manager
 from backend.app.security import rate_limiter
+
+# Ensure test suite runs with a deterministic test password hash if unset
+if not password_manager.is_configured:
+    password_manager._active_hash = password_manager.hash_password("test_amquant_password_2026")
 
 # Generate a reusable test session token for test suites
 _test_session = session_manager.create_session("127.0.0.1")

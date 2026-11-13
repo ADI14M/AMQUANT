@@ -73,10 +73,20 @@ def get_client_ip(request: Request) -> str:
         return "127.0.0.1"
 
     if direct_ip_obj.is_private or direct_ip_obj.is_loopback:
+        # Check CF-Connecting-IP first when connection arrives from trusted edge proxy
+        cf_ip = request.headers.get("CF-Connecting-IP")
+        if cf_ip:
+            try:
+                cf_obj = ipaddress.ip_address(cf_ip.strip())
+                return str(cf_obj)
+            except ValueError:
+                pass
+
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
             ips = [p.strip() for p in forwarded_for.split(",") if p.strip()]
             if ips:
+                # Walk backwards to find the rightmost public client IP
                 for candidate in reversed(ips):
                     try:
                         cand_obj = ipaddress.ip_address(candidate)
