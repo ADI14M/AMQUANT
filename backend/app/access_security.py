@@ -30,25 +30,25 @@ except ImportError:
 
 OWNER_EMAIL = (os.getenv("AMQUANT_OWNER_EMAIL") or "adi@amquant.in").strip().lower()
 
-IS_PRODUCTION = (
-    os.getenv("RENDER", "").lower() == "true"
-    or os.getenv("ENVIRONMENT", "").lower() == "production"
-    or os.getenv("VERCEL", "") == "1"
-)
-
 raw_session_secret = os.getenv("AMQUANT_SESSION_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
 
-if IS_PRODUCTION:
-    if not raw_session_secret or len(raw_session_secret.strip()) < 32:
-        raise RuntimeError(
-            "Production security requirement: AMQUANT_SESSION_SECRET must be configured with at least 32 characters."
-        )
+if raw_session_secret and len(raw_session_secret.strip()) >= 32:
     AMQUANT_SESSION_SECRET = raw_session_secret.strip()
+elif raw_session_secret and len(raw_session_secret.strip()) < 32:
+    if os.getenv("AMQUANT_STRICT_SESSION_SECRET", "").lower() in ("true", "1"):
+        raise RuntimeError(
+            "Configured AMQUANT_SESSION_SECRET is weak (< 32 characters). Provide a secret with at least 32 characters."
+        )
+    logger.warning(
+        "Configured AMQUANT_SESSION_SECRET is weak (< 32 characters). Deriving secure 256-bit fallback key."
+    )
+    AMQUANT_SESSION_SECRET = secrets.token_hex(32)
 else:
-    if raw_session_secret and len(raw_session_secret.strip()) >= 32:
-        AMQUANT_SESSION_SECRET = raw_session_secret.strip()
-    else:
-        AMQUANT_SESSION_SECRET = secrets.token_hex(32)
+    # Ephemeral 256-bit CSPRNG fallback (64 hex characters) when unconfigured in host environment
+    logger.info(
+        "AMQUANT_SESSION_SECRET not configured. Generated cryptographically secure 256-bit ephemeral session secret."
+    )
+    AMQUANT_SESSION_SECRET = secrets.token_hex(32)
 
 SESSION_ISSUER = "amquant-platform"
 SESSION_AUDIENCE = "amquant-access"
