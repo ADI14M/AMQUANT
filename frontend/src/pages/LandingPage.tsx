@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useAccess } from '../context/AccessContext'
 import AdminModal from '../components/AdminModal'
+import Footer from '../components/Footer'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -328,14 +329,13 @@ export default function LandingPage() {
         </div>
 
         {/* Footer Disclaimer */}
-        <footer className="mt-16 text-center text-xs text-[#64748b] border-t border-[#131b26] pt-8 space-y-2">
-          <p className="font-mono text-[11px]">
+        <div className="mt-16 text-center text-xs text-[#64748b] pt-8 space-y-2 mb-6">
+          <p className="font-mono text-[11px] text-[#475569]">
             AMQUANT RESEARCH ENVIRONMENT · SIMULATION & QUANTITATIVE RESEARCH ONLY · REAL-MONEY TRADING DISABLED
           </p>
-          <p className="text-[11px] text-[#475569]">
-            AMQUANT does not provide investment advice or broker-dealer order routing. All backtesting models use historical and simulated data.
-          </p>
-        </footer>
+        </div>
+
+        <Footer variant="landing" className="rounded-xl border border-[#16212e]" />
       </main>
 
       <AdminModal isOpen={adminOpen} onClose={() => setAdminOpen(false)} />

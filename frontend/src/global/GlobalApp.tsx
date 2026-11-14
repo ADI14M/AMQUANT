@@ -11,6 +11,7 @@ import StochasticSimulator from '../modules/StochasticSimulator'
 import OptionsLab from '../modules/OptionsLab'
 import ResearchIntelligence from '../modules/ResearchIntelligence'
 import PersonalWorkspace from '../modules/PersonalWorkspace'
+import Footer from '../components/Footer'
 
 const moduleInfo: Record<Exclude<ModuleId, 'overview'>, { eyebrow: string; title: string; description: string }> = {
   intelligence: { eyebrow: 'CORE · WORKFLOW SYNTHESIS', title: 'Research Intelligence', description: 'Unified workflow connecting Bayesian inference, simulations, and valuation.' },
@@ -312,6 +313,7 @@ export default function GlobalApp() {
               onNavigate={handleSelectModule}
             />
           )}
+          <Footer variant="global" className="mt-8" />
         </div>
       </main>
     </div>

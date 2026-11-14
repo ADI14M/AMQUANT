@@ -11,6 +11,7 @@ import IndiaSidebar, { type IndiaSectionId } from '../components/IndiaSidebar'
 import { useAuth } from '../context/AuthContext'
 import { checkApiHealth, getIndiaMarketOverview, type IndiaMarketOverview } from '../lib/api'
 import AmquantIndia from '../modules/AmquantIndia'
+import Footer from '../components/Footer'
 
 const sectionTitles: Record<IndiaSectionId, { title: string; subtitle: string }> = {
   overview: { title: 'Market Overview & Macro', subtitle: 'NSE & BSE benchmark performance, macro indicators and market breadth.' },
@@ -273,6 +274,7 @@ export default function IndiaApp() {
             onSelectSection={handleSelectSection}
             hideSubtabBar={true}
           />
+          <Footer variant="india" className="mt-8" />
         </div>
       </main>
     </div>

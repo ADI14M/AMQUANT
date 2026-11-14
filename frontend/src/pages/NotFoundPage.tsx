@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Compass, Globe2, Home, LineChart } from 'lucide-react'
+import Footer from '../components/Footer'
 
 export default function NotFoundPage() {
   const navigate = useNavigate()
@@ -47,6 +48,8 @@ export default function NotFoundPage() {
           <span>Indian Markets</span>
         </button>
       </div>
+
+      <Footer variant="landing" className="mt-12 w-full max-w-3xl rounded-xl border border-[#16212e]" />
     </div>
   )
 }

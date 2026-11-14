@@ -107,5 +107,25 @@ describe('AMQUANT Root Routing & Landing Page', () => {
     expect(screen.getByRole('button', { name: /Intraday Backtesting/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Futures Lab/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Options Lab & Payoff/i })).toBeInTheDocument()
+    expect(screen.getByText(/© 2026 Aditya M\./i)).toBeInTheDocument()
+  })
+
+  it('renders the copyright notice on landing, global and india routes', () => {
+    // 1. Landing
+    window.history.pushState({}, '', '/')
+    const { unmount: unmountLanding } = render(<App />)
+    expect(screen.getByText(/© 2026 Aditya M\./i)).toBeInTheDocument()
+    unmountLanding()
+
+    // 2. Global
+    window.history.pushState({}, '', '/global')
+    const { unmount: unmountGlobal } = render(<App />)
+    expect(screen.getByText(/© 2026 Aditya M\./i)).toBeInTheDocument()
+    unmountGlobal()
+
+    // 3. India
+    window.history.pushState({}, '', '/india')
+    render(<App />)
+    expect(screen.getByText(/© 2026 Aditya M\./i)).toBeInTheDocument()
   })
 })
